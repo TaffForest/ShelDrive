@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+sidecar/node_modules/
+
+# Build output
+dist/
+src-tauri/target/
+sidecar/dist/
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Logs
+*.log

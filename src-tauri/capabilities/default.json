@@ -1,0 +1,15 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for ShelDrive",
+  "windows": ["tray-panel"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "core:window:allow-close",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size"
+  ]
+}

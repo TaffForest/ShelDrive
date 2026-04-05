@@ -1,0 +1,56 @@
+{
+  "productName": "ShelDrive",
+  "version": "0.1.0",
+  "identifier": "com.sheldrive.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build && cd sidecar && npm run build && cd ..",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "tray-panel",
+        "title": "ShelDrive",
+        "width": 360,
+        "height": 480,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true
+      }
+    ],
+    "trayIcon": {
+      "id": "sheldrive-tray",
+      "iconPath": "icons/tray-disconnected.png",
+      "iconAsTemplate": true
+    },
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "frameworks": []
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libfuse3-3"]
+      }
+    }
+  }
+}
