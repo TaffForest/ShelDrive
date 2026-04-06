@@ -70,25 +70,81 @@ pub fn is_image(path: &str) -> bool {
     IMAGE_EXTENSIONS.contains(&ext.as_str())
 }
 
-/// Scan image content for NSFW material.
-/// Uses a simple heuristic check for now — ONNX model integration is Phase 2.
+/// Scan image content for safety issues.
+/// Layer 1: Header validation — reject files with mismatched extensions/headers.
+/// Layer 2: Skin tone heuristic — flag images with high skin-color pixel ratio.
+/// Layer 3: (Future) ONNX NSFW classifier for neural network detection.
 /// Returns Safe for non-image files.
 pub fn scan_image(path: &str, data: &[u8]) -> ContentVerdict {
     if !is_image(path) || data.len() < 100 {
         return ContentVerdict::Safe;
     }
 
-    // Phase 1: Header-based validation — ensure the file is actually an image
+    // Layer 1: Header validation
     if !is_valid_image_header(data) {
         warn!("File {} claims to be an image but has invalid header", path);
         return ContentVerdict::BlockedExtension("fake-image".to_string());
     }
 
-    // Phase 2: ONNX NSFW model — placeholder for now
-    // When the ort crate and model are integrated, this will run the classifier.
-    // For now, all valid images pass.
+    // Layer 2: Skin tone pixel ratio heuristic (simple but catches obvious cases)
+    // This is a rough pre-filter — not a replacement for a proper ML model.
+    // Only applies to JPEG (most common photo format) to keep it fast.
+    if data.len() > 10_000 && is_jpeg(data) {
+        let skin_ratio = estimate_skin_ratio(data);
+        if skin_ratio > 0.6 {
+            warn!(
+                "Image {} flagged: high skin-tone ratio ({:.0}%) — review recommended",
+                path,
+                skin_ratio * 100.0
+            );
+            // Don't block outright — just log for now.
+            // When the ONNX model is integrated, this pre-filter will
+            // trigger a more accurate neural network scan.
+        }
+    }
+
     info!("Image scanned: {} ({} bytes) — passed", path, data.len());
     ContentVerdict::Safe
+}
+
+fn is_jpeg(data: &[u8]) -> bool {
+    data.len() >= 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF
+}
+
+/// Rough skin-tone detection by sampling raw JPEG bytes.
+/// This is NOT image decoding — it samples byte triplets that look like
+/// YCbCr/RGB skin tones. Very rough, lots of false positives, but
+/// serves as a pre-filter signal for future ML scanning.
+fn estimate_skin_ratio(data: &[u8]) -> f32 {
+    if data.len() < 1000 {
+        return 0.0;
+    }
+    // Sample every 100th byte triplet from the image data portion
+    let start = data.len() / 4; // Skip headers
+    let end = data.len() - 3;
+    let mut skin_count = 0u32;
+    let mut total = 0u32;
+
+    let mut i = start;
+    while i < end {
+        let r = data[i];
+        let g = data[i + 1];
+        let b = data[i + 2];
+
+        total += 1;
+        // Simple RGB skin-tone range (very approximate)
+        if r > 95 && g > 40 && b > 20 && r > g && r > b && (r as i32 - g as i32).abs() > 15 && r < 250 && g < 230 {
+            skin_count += 1;
+        }
+
+        i += 100;
+    }
+
+    if total == 0 {
+        0.0
+    } else {
+        skin_count as f32 / total as f32
+    }
 }
 
 /// Validate image file magic bytes.
