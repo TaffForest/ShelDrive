@@ -293,11 +293,8 @@ impl ShelDriveFS {
 impl Filesystem for ShelDriveFS {
     fn statfs(&self, _req: &Request, _ino: INodeNo, reply: ReplyStatfs) {
         // Report 1TB virtual capacity so the OS never blocks writes
-        let block_size = 4096u32;
-        let total_blocks = 1_099_511_627_776u64 / block_size as u64; // 1TB
-        let used = self.staging.used_bytes().unwrap_or(0) / block_size as u64;
-        let free = total_blocks.saturating_sub(used);
-        reply.statfs(total_blocks, free, free, 1_000_000, 1_000_000, block_size, 255, 0);
+        //                blocks,      bfree,       bavail,      files,     ffree,     bsize, namelen, frsize
+        reply.statfs(256 * 1024 * 1024, 256 * 1024 * 1024, 256 * 1024 * 1024, 1_000_000, 1_000_000, 4096, 255, 4096);
     }
 
     fn lookup(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
