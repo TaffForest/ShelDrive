@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShelDrive — Mount the Decentralised Web</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent: #00FFB2;
+  --accent-dim: #00cc8e;
+  --accent-glow: #00FFB240;
+  --accent-glow-strong: #00FFB280;
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-tertiary: #1a1a1a;
+  --border: #2a2a2a;
+  --text-primary: #e0e0e0;
+  --text-secondary: #888888;
+  --text-muted: #555555;
+  --error: #ff4444;
+  --blue: #66bbff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+body {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Grid noise texture ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+section { position: relative; z-index: 1; }
+
+/* ── Container ── */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ── Section spacing ── */
+.section {
+  padding: 120px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-bottom: 32px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   HERO
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 80px 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+.hero-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 6px 16px;
+  margin-bottom: 48px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-title {
+  font-size: clamp(48px, 10vw, 96px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-title span {
+  color: var(--accent);
+  text-shadow: 0 0 40px var(--accent-glow-strong), 0 0 80px var(--accent-glow);
+}
+
+.hero-subtitle {
+  font-size: clamp(16px, 2.5vw, 22px);
+  font-weight: 300;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto 56px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 80px;
+}
+
+.btn {
+  display: inline-block;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 14px 36px;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:hover { text-decoration: none; }
+
+.btn-primary {
+  border-color: var(--accent);
+  color: var(--bg-primary);
+  background: var(--accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-dim);
+  box-shadow: 0 0 24px var(--accent-glow-strong);
+}
+
+.btn-secondary:hover {
+  border-color: var(--text-muted);
+  background: var(--bg-secondary);
+}
+
+/* ── Terminal mockup ── */
+.terminal {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  text-align: left;
+  position: relative;
+  z-index: 1;
+}
+
+.terminal-bar {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terminal-dot {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--border);
+}
+
+.terminal-title {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  margin-left: 8px;
+}
+
+.terminal-body {
+  padding: 24px;
+  font-size: 13px;
+  line-height: 2;
+  overflow: hidden;
+}
+
+.terminal-line {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: terminalIn 0.4s ease forwards;
+}
+
+.terminal-line:nth-child(1) { animation-delay: 0.5s; }
+.terminal-line:nth-child(2) { animation-delay: 1.5s; }
+.terminal-line:nth-child(3) { animation-delay: 2.5s; }
+.terminal-line:nth-child(4) { animation-delay: 3.5s; }
+.terminal-line:nth-child(5) { animation-delay: 4.5s; }
+.terminal-line:nth-child(6) { animation-delay: 5.2s; }
+
+@keyframes terminalIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.t-prompt { color: var(--accent); }
+.t-cmd { color: var(--text-primary); }
+.t-path { color: var(--blue); }
+.t-output { color: var(--text-muted); }
+.t-success { color: var(--accent); }
+.t-cid { color: var(--text-secondary); }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   HOW IT WORKS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  background: var(--border);
+}
+
+.step {
+  background: var(--bg-primary);
+  padding: 48px 32px;
+  position: relative;
+}
+
+.step-number {
+  font-size: 64px;
+  font-weight: 800;
+  color: var(--bg-tertiary);
+  line-height: 1;
+  margin-bottom: 24px;
+}
+
+.step-icon {
+  font-size: 24px;
+  color: var(--accent);
+  margin-bottom: 16px;
+  display: block;
+}
+
+.step-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.step-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.step-cmd {
+  margin-top: 20px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--accent);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ARCHITECTURE
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.arch-diagram {
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  padding: 40px;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--text-secondary);
+  margin-bottom: 48px;
+}
+
+.arch-diagram .hl { color: var(--accent); }
+.arch-diagram .dim { color: var(--text-muted); }
+.arch-diagram .blue { color: var(--blue); }
+
+.arch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  background: var(--border);
+}
+
+.arch-card {
+  background: var(--bg-primary);
+  padding: 32px;
+}
+
+.arch-card-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.arch-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.arch-card-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FEATURES
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+  background: var(--border);
+}
+
+.feature {
+  background: var(--bg-primary);
+  padding: 40px 32px;
+  transition: background 0.2s ease;
+}
+
+.feature:hover {
+  background: var(--bg-secondary);
+}
+
+.feature-icon {
+  color: var(--accent);
+  font-size: 18px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.feature-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-bottom: 10px;
+}
+
+.feature-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.feature-tag {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   STATS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  background: var(--border);
+}
+
+.stat {
+  background: var(--bg-primary);
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+.stat-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow-strong);
+  animation: pulse 1.5s ease-in-out infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DOWNLOAD
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.download-section { text-align: center; }
+
+.download-title {
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+.download-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 48px;
+}
+
+.download-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  background: var(--border);
+  margin-bottom: 48px;
+  text-align: left;
+}
+
+.download-card {
+  background: var(--bg-primary);
+  padding: 32px;
+}
+
+.download-card-os {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.download-card-format {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.download-card-prereq {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.8;
+}
+
+.download-card .btn {
+  width: 100%;
+  text-align: center;
+  padding: 12px;
+  font-size: 12px;
+}
+
+.prereq-label {
+  color: var(--text-secondary);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FOOTER
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+footer {
+  padding: 48px 0;
+  text-align: center;
+}
+
+.footer-logo {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  margin-bottom: 16px;
+}
+
+.footer-links {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.footer-tagline {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SCROLL ANIMATIONS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   RESPONSIVE
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media (max-width: 900px) {
+  .steps,
+  .arch-grid,
+  .download-grid {
+    grid-template-columns: 1fr;
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .arch-diagram {
+    font-size: 10px;
+    padding: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .container { padding: 0 20px; }
+  .section { padding: 80px 0; }
+  .hero { padding: 60px 20px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     HERO
+     ══════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-badge">SHELBY PROTOCOL</div>
+  <h1 class="hero-title">SHEL<span>DRIVE</span></h1>
+  <p class="hero-subtitle">Mount the decentralised web as a drive. Copy files in, they're pinned to the Shelby network. Open files, they're retrieved on demand. It's just a folder.</p>
+
+  <div class="hero-actions">
+    <a href="#download" class="btn btn-primary">DOWNLOAD</a>
+    <a href="https://github.com" class="btn btn-secondary">VIEW SOURCE</a>
+  </div>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="terminal-dot"></div>
+      <div class="terminal-dot"></div>
+      <div class="terminal-dot"></div>
+      <span class="terminal-title">sheldrive &mdash; /Volumes/ShelDrive</span>
+    </div>
+    <div class="terminal-body">
+      <div class="terminal-line"><span class="t-prompt">$</span> <span class="t-cmd">cp</span> <span class="t-path">report.pdf</span> <span class="t-path">/Volumes/ShelDrive/</span></div>
+      <div class="terminal-line"><span class="t-output">&nbsp;&nbsp;pinning report.pdf (2.4 MB) to Shelby...</span></div>
+      <div class="terminal-line"><span class="t-success">&nbsp;&nbsp;&#10003; pinned &rarr;</span> <span class="t-cid">shelby:0x67d8...f0a/report.pdf</span></div>
+      <div class="terminal-line">&nbsp;</div>
+      <div class="terminal-line"><span class="t-prompt">$</span> <span class="t-cmd">ls</span> <span class="t-path">/Volumes/ShelDrive/</span></div>
+      <div class="terminal-line"><span class="t-output">&nbsp;&nbsp;report.pdf&nbsp;&nbsp;&nbsp;notes.md&nbsp;&nbsp;&nbsp;backup/</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     HOW IT WORKS
+     ══════════════════════════════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-label reveal">HOW IT WORKS</div>
+    <div class="steps reveal">
+      <div class="step">
+        <div class="step-number">01</div>
+        <span class="step-icon">&#8593;</span>
+        <div class="step-title">WRITE</div>
+        <div class="step-desc">Copy or save files into the mounted drive. ShelDrive intercepts filesystem calls through FUSE and buffers content in memory.</div>
+        <div class="step-cmd">cp file.txt /Volumes/ShelDrive/</div>
+      </div>
+      <div class="step">
+        <div class="step-number">02</div>
+        <span class="step-icon">&#9670;</span>
+        <div class="step-title">PIN</div>
+        <div class="step-desc">On file close, content is uploaded to the Shelby decentralised storage network. The returned CID is stored in a local SQLite index.</div>
+        <div class="step-cmd">shelby:0x67d8.../file.txt</div>
+      </div>
+      <div class="step">
+        <div class="step-number">03</div>
+        <span class="step-icon">&#8595;</span>
+        <div class="step-title">READ</div>
+        <div class="step-desc">Open any file and ShelDrive retrieves it: first from memory, then disk cache, then the Shelby network. Transparent and instant.</div>
+        <div class="step-cmd">cat /Volumes/ShelDrive/file.txt</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     ARCHITECTURE
+     ══════════════════════════════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-label reveal">ARCHITECTURE</div>
+    <div class="arch-diagram reveal"><span class="dim">  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;</span>
+<span class="dim">  &#9474;</span>  <span class="hl">Finder / Explorer / Nautilus</span>        <span class="dim">&#9474;</span>   Your apps
+<span class="dim">  &#9500;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9508;</span>
+<span class="dim">  &#9474;</span>  <span class="blue">FUSE / WinFSP</span>                       <span class="dim">&#9474;</span>   Kernel &harr; Userspace
+<span class="dim">  &#9500;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9508;</span>
+<span class="dim">  &#9474;</span>  <span class="hl">ShelDriveFS</span>  <span class="dim">&#9472;&#9472;&#9472;</span>  <span class="blue">SQLite</span>  <span class="dim">&#9472;&#9472;&#9472;</span>  <span class="blue">Cache</span>  <span class="dim">&#9474;</span>   Virtual filesystem
+<span class="dim">  &#9500;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9508;</span>
+<span class="dim">  &#9474;</span>  <span class="hl">ShelbyBridge</span>  <span class="dim">&rarr;</span>  <span class="blue">JSON-RPC</span>  <span class="dim">&rarr;</span>  <span class="hl">Sidecar</span>  <span class="dim">&#9474;</span>   IPC layer
+<span class="dim">  &#9500;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9508;</span>
+<span class="dim">  &#9474;</span>  <span class="hl">@shelby-protocol/sdk</span>                <span class="dim">&#9474;</span>   Shelby SDK
+<span class="dim">  &#9500;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9508;</span>
+<span class="dim">  &#9474;</span>  <span class="hl">SHELBY NETWORK</span>                      <span class="dim">&#9474;</span>   Decentralised storage
+<span class="dim">  &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</span></div>
+
+    <div class="arch-grid reveal">
+      <div class="arch-card">
+        <div class="arch-card-label">APP SHELL</div>
+        <div class="arch-card-title">Tauri v2</div>
+        <div class="arch-card-desc">Rust backend with native WebView. System tray integration, IPC commands, no Electron bloat. 8MB binary.</div>
+      </div>
+      <div class="arch-card">
+        <div class="arch-card-label">FILESYSTEM</div>
+        <div class="arch-card-title">fuser 0.17</div>
+        <div class="arch-card-desc">Userspace filesystem driver. Intercepts OS read/write/delete calls and translates them to Shelby operations.</div>
+      </div>
+      <div class="arch-card">
+        <div class="arch-card-label">STORAGE INDEX</div>
+        <div class="arch-card-title">SQLite</div>
+        <div class="arch-card-desc">Local path-to-CID mapping. Fast directory listings without network calls. Survives restarts. WAL mode.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     FEATURES
+     ══════════════════════════════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-label reveal">FEATURES</div>
+    <div class="features-grid reveal">
+      <div class="feature">
+        <span class="feature-icon">&#9632;</span>
+        <div class="feature-title">Native Drive Mount</div>
+        <div class="feature-desc">Appears in Finder, Explorer, and Nautilus as a real drive. No special tools needed to access your decentralised files.</div>
+        <span class="feature-tag">FUSE / WINFSP</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">&#9671;</span>
+        <div class="feature-title">Content-Addressed Index</div>
+        <div class="feature-desc">Every file maps to a Shelby CID via a local SQLite database. Directory listings are instant. Lookups under 1ms for 10K+ files.</div>
+        <span class="feature-tag">SQLITE</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">&#9881;</span>
+        <div class="feature-title">LRU Disk Cache</div>
+        <div class="feature-desc">512MB local cache at ~/.sheldrive/cache/. Files survive app restarts. Automatic eviction when full. Read without network latency.</div>
+        <span class="feature-tag">512 MB DEFAULT</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">&#8635;</span>
+        <div class="feature-title">Self-Healing Sidecar</div>
+        <div class="feature-desc">The Node.js SDK bridge auto-restarts up to 3 times on crash. Broken pipe detection with automatic reconnection.</div>
+        <span class="feature-tag">AUTO-RESTART</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">&#9888;</span>
+        <div class="feature-title">Offline Resilience</div>
+        <div class="feature-desc">Write files without network access. Content is saved to disk cache with a local CID and queued for upload when connectivity returns.</div>
+        <span class="feature-tag">WRITE QUEUE</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">&#9783;</span>
+        <div class="feature-title">Cross-Platform</div>
+        <div class="feature-desc">macOS and Linux today via FUSE. Windows via WinFSP planned. Same codebase, same Tauri shell, platform-native installers.</div>
+        <span class="feature-tag">macOS / LINUX / WINDOWS</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     STATS
+     ══════════════════════════════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-label reveal">NETWORK</div>
+    <div class="stats-grid reveal">
+      <div class="stat">
+        <div class="stat-value" data-count="14">0</div>
+        <div class="stat-label">UNIT TESTS</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" data-count="50">0</div>
+        <div class="stat-label">SOURCE FILES</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">7</div>
+        <div class="stat-label">BUILD PHASES</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value"><span class="stat-dot"></span>LIVE</div>
+        <div class="stat-label">SHELBYNET STATUS</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     DOWNLOAD
+     ══════════════════════════════════════ -->
+<section class="section download-section" id="download">
+  <div class="container">
+    <div class="section-label reveal">DOWNLOAD</div>
+    <h2 class="download-title reveal">Get ShelDrive</h2>
+    <p class="download-subtitle reveal">v0.1.0 &mdash; Early access testnet build</p>
+
+    <div class="download-grid reveal">
+      <div class="download-card">
+        <div class="download-card-os">macOS</div>
+        <div class="download-card-format">.dmg</div>
+        <div class="download-card-prereq">
+          <span class="prereq-label">Requires:</span> FUSE-T or macFUSE<br>
+          Apple Silicon + Intel
+        </div>
+        <a href="#" class="btn btn-primary">DOWNLOAD DMG</a>
+      </div>
+      <div class="download-card">
+        <div class="download-card-os">LINUX</div>
+        <div class="download-card-format">.deb / .AppImage</div>
+        <div class="download-card-prereq">
+          <span class="prereq-label">Requires:</span> libfuse3<br>
+          x86_64
+        </div>
+        <a href="#" class="btn btn-primary">DOWNLOAD DEB</a>
+      </div>
+      <div class="download-card">
+        <div class="download-card-os">WINDOWS</div>
+        <div class="download-card-format">.exe</div>
+        <div class="download-card-prereq">
+          <span class="prereq-label">Requires:</span> WinFSP<br>
+          x86_64
+        </div>
+        <a href="#" class="btn btn-secondary" style="border-color: var(--text-muted); color: var(--text-muted);">COMING SOON</a>
+      </div>
+    </div>
+
+    <div class="reveal" style="border: 1px solid var(--border); padding: 32px; background: var(--bg-secondary); text-align: left; max-width: 600px; margin: 0 auto;">
+      <div style="font-size: 11px; color: var(--text-muted); letter-spacing: 0.15em; margin-bottom: 16px;">QUICK START</div>
+      <div style="font-size: 13px; color: var(--text-secondary); line-height: 2.2;">
+        <span style="color: var(--accent);">$</span> brew install --cask fuse-t<br>
+        <span style="color: var(--accent);">$</span> open ShelDrive.dmg<br>
+        <span style="color: var(--accent);">$</span> <span style="color: var(--text-muted);"># Configure ~/.sheldrive/config.toml</span><br>
+        <span style="color: var(--accent);">$</span> <span style="color: var(--text-muted);"># Click MOUNT in the tray menu</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     FOOTER
+     ══════════════════════════════════════ -->
+<footer>
+  <div class="container">
+    <div class="footer-logo">SHELDRIVE</div>
+    <div class="footer-links">
+      <a href="https://github.com">GitHub</a>
+      <a href="https://shelby.xyz">Shelby Protocol</a>
+      <a href="#">Docs</a>
+    </div>
+    <div class="footer-tagline">DECENTRALISED HOT STORAGE</div>
+  </div>
+</footer>
+
+<!-- ══════════════════════════════════════
+     SCRIPTS
+     ══════════════════════════════════════ -->
+<script>
+// Scroll reveal
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+
+reveals.forEach(el => observer.observe(el));
+
+// Counter animation
+const counters = document.querySelectorAll('[data-count]');
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const el = entry.target;
+      const target = parseInt(el.dataset.count);
+      let current = 0;
+      const step = Math.ceil(target / 30);
+      const interval = setInterval(() => {
+        current += step;
+        if (current >= target) {
+          current = target;
+          clearInterval(interval);
+        }
+        el.textContent = current;
+      }, 30);
+      counterObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+
+counters.forEach(el => counterObserver.observe(el));
+</script>
+</body>
+</html>
