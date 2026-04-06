@@ -12,7 +12,7 @@ export function TrayPanel() {
   const [view, setView] = useState<"main" | "settings">("main");
   const [shelby, setShelby] = useState<ShelbyStatus>({
     connected: false,
-    network: "SHELBYNET",
+    network: "—",
     node_url: null,
   });
 

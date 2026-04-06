@@ -35,6 +35,11 @@ pub fn mount_drive(
             *state.mount_handle.lock().unwrap() = Some(handle);
             status.mount_status = MountStatus::Mounted;
             status.error_message = None;
+
+            // Open the mounted drive in Finder
+            let _ = std::process::Command::new("open")
+                .arg(&mount_point)
+                .output();
         }
         Err(e) => {
             error!("Mount failed: {}", e);
