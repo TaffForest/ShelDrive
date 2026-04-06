@@ -43,11 +43,19 @@ pub fn mount_drive(
         return status.clone();
     }
 
+    // Check if FUSE is available
+    if !is_fuse_installed() {
+        status.mount_status = MountStatus::Error;
+        status.error_message = Some(
+            "FUSE-T is required. Install it free at https://fuse-t.org or run: brew install --cask fuse-t".to_string()
+        );
+        return status.clone();
+    }
+
     let mount_point = status.mount_point.clone();
     let db_path = db_path();
     let bridge_clone = (*bridge).clone();
 
-    // Load encryption key from config (uses private_key as passphrase)
     let config = crate::bridge::shelby::ShelbyConfig::load();
     let encryption_key = config.private_key;
 
@@ -191,6 +199,30 @@ fn extract_value(content: &str, key: &str) -> Option<String> {
 #[tauri::command]
 pub fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
+}
+
+fn is_fuse_installed() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        // Check for FUSE-T
+        if std::path::Path::new("/usr/local/lib/libfuse3.dylib").exists() {
+            return true;
+        }
+        // Check for macFUSE
+        if std::path::Path::new("/Library/Frameworks/macFUSE.framework").exists() {
+            return true;
+        }
+        false
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::path::Path::new("/usr/lib/libfuse3.so").exists()
+            || std::path::Path::new("/usr/lib/x86_64-linux-gnu/libfuse3.so").exists()
+    }
+    #[cfg(target_os = "windows")]
+    {
+        true // WinFSP check TBD
+    }
 }
 
 fn db_path() -> String {
