@@ -868,10 +868,15 @@ pub fn mount(
 ) -> Result<MountHandle, String> {
     let mount_path = PathBuf::from(mount_point);
 
-    if !mount_path.exists() {
-        std::fs::create_dir_all(&mount_path)
-            .map_err(|e| format!("Failed to create mount point: {}", e))?;
+    // Clean up any stale mount
+    let _ = std::process::Command::new("umount").arg(mount_point).output();
+
+    if mount_path.exists() {
+        // Remove any leftover files so FUSE can mount cleanly
+        let _ = std::fs::remove_dir_all(&mount_path);
     }
+    std::fs::create_dir_all(&mount_path)
+        .map_err(|e| format!("Failed to create mount point: {}", e))?;
 
     let fs = ShelDriveFS::new(db_path, bridge)
         .map_err(|e| format!("Failed to initialize filesystem: {}", e))?;
