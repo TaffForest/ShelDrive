@@ -7,10 +7,10 @@ use crate::db::index::{
 use crate::db::schema;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use fuser::{
-    BsdFileFlags, Config, Errno, FileAttr, FileHandle, FileType, Filesystem, FopenFlags,
-    Generation, INodeNo, LockOwner, MountOption, OpenFlags, ReplyAttr, ReplyCreate, ReplyData,
-    ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen, ReplyWrite, Request, Session, TimeOrNow,
-    WriteFlags,
+    BackgroundSession, BsdFileFlags, Config, Errno, FileAttr, FileHandle, FileType, Filesystem,
+    FopenFlags, Generation, INodeNo, LockOwner, MountOption, OpenFlags, ReplyAttr, ReplyCreate,
+    ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen, ReplyWrite, Request, Session,
+    TimeOrNow, WriteFlags,
 };
 use log::{debug, error, info, warn};
 use rusqlite::Connection;
@@ -828,13 +828,7 @@ fn fnv_hash(data: &[u8]) -> u64 {
 // ---------------------------------------------------------------------------
 
 pub struct MountHandle {
-    session: Session<ShelDriveFS>,
-}
-
-impl MountHandle {
-    pub fn unmount(self) {
-        drop(self.session);
-    }
+    _session: BackgroundSession,
 }
 
 pub fn mount(
@@ -861,5 +855,9 @@ pub fn mount(
     let session = Session::new(fs, &mount_path, &config)
         .map_err(|e| format!("Failed to create FUSE session: {}", e))?;
 
-    Ok(MountHandle { session })
+    let bg = session
+        .spawn()
+        .map_err(|e| format!("Failed to spawn FUSE background session: {}", e))?;
+
+    Ok(MountHandle { _session: bg })
 }

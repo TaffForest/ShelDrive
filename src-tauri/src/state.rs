@@ -1,6 +1,6 @@
+use crate::fs::fuse_driver::MountHandle;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use std::thread::JoinHandle;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -20,11 +20,7 @@ pub struct AppStatus {
 
 pub struct AppState {
     pub status: Mutex<AppStatus>,
-    /// Handle to the background thread running the FUSE session.
-    /// Stored so we can signal unmount.
-    pub fuse_thread: Mutex<Option<JoinHandle<()>>>,
-    /// Flag to signal the FUSE thread to stop
-    pub fuse_unmount_flag: Mutex<bool>,
+    pub mount_handle: Mutex<Option<MountHandle>>,
 }
 
 impl AppState {
@@ -41,8 +37,7 @@ impl AppState {
                 },
                 error_message: None,
             }),
-            fuse_thread: Mutex::new(None),
-            fuse_unmount_flag: Mutex::new(false),
+            mount_handle: Mutex::new(None),
         }
     }
 }
