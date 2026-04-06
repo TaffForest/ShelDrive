@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShelDrive — Documentation</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-dark: #050505;
+  --bg-card: #0d0d0d;
+  --bg-surface: #141414;
+  --bg-hover: #252525;
+  --border: #1a1a1a;
+  --accent: #8BC53F;
+  --accent-dark: #6BA030;
+  --text: #e8e8e8;
+  --text-muted: #999;
+  --text-dim: #555;
+  --error: #f87171;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-dark);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+code, .mono { font-family: 'JetBrains Mono', monospace; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+::selection { background: var(--accent); color: var(--bg-dark); }
+
+/* Nav */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(5, 5, 5, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-brand { font-size: 20px; font-weight: 700; color: var(--text); }
+.accent { color: var(--accent); }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.nav-links a { transition: color 0.15s; }
+.nav-links a:hover { color: var(--text); text-decoration: none; }
+
+/* Layout */
+.docs-layout {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 32px 80px;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 48px;
+}
+
+/* Sidebar */
+.sidebar {
+  position: sticky;
+  top: 80px;
+  align-self: start;
+}
+
+.sidebar a {
+  display: block;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+
+.sidebar a:hover { color: var(--text); text-decoration: none; }
+.sidebar a.active { color: var(--accent); }
+
+.sidebar-section {
+  margin-bottom: 20px;
+}
+
+.sidebar-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+/* Content */
+.doc-content h1 {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+}
+
+.doc-content h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 48px;
+  margin-bottom: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.doc-content h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 32px;
+  margin-bottom: 10px;
+}
+
+.doc-content p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.doc-content ul, .doc-content ol {
+  margin-bottom: 16px;
+  padding-left: 20px;
+}
+
+.doc-content li {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.doc-content strong { color: var(--text); }
+
+.doc-content .lead {
+  font-size: 17px;
+  color: var(--text);
+  margin-bottom: 32px;
+}
+
+/* Code blocks */
+.code-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-muted);
+}
+
+.code-block .prompt { color: var(--accent); }
+.code-block .comment { color: var(--text-dim); }
+.code-block .string { color: #7ec8e3; }
+
+/* Inline code */
+.doc-content code {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+/* Tables */
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.doc-table th {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.doc-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.doc-table td code {
+  font-size: 12px;
+}
+
+/* Callout */
+.callout {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.callout-warn {
+  border-left-color: var(--error);
+}
+
+.callout p {
+  margin-bottom: 0;
+  font-size: 14px;
+}
+
+.callout strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  margin-right: 6px;
+}
+
+.badge-green { border-color: var(--accent); color: var(--accent); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .docs-layout {
+    grid-template-columns: 1fr;
+    padding: 32px 20px 60px;
+    gap: 24px;
+  }
+  .sidebar { position: static; }
+  .doc-content h1 { font-size: 26px; }
+  .doc-content h2 { font-size: 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">Shel<span class="accent">Drive</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="docs.html" style="color: var(--text);">Docs</a>
+      <a href="https://github.com/TaffForest/ShelDrive" target="_blank">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<div class="docs-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="#installation">Installation</a>
+      <a href="#prerequisites">Prerequisites</a>
+      <a href="#configuration">Configuration</a>
+      <a href="#first-mount">First Mount</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Usage</div>
+      <a href="#file-operations">File Operations</a>
+      <a href="#finder-integration">Finder Integration</a>
+      <a href="#offline-mode">Offline Mode</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Safety</div>
+      <a href="#content-filtering">Content Filtering</a>
+      <a href="#blocked-types">Blocked File Types</a>
+      <a href="#size-limits">Size Limits</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Architecture</div>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#data-locations">Data Locations</a>
+      <a href="#tech-stack">Tech Stack</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Troubleshooting</div>
+      <a href="#common-issues">Common Issues</a>
+    </div>
+  </aside>
+
+  <!-- Content -->
+  <main class="doc-content">
+    <span class="badge badge-green">v0.1.0</span>
+    <span class="badge">Early Access</span>
+    <h1 style="margin-top: 16px;">ShelDrive Documentation</h1>
+    <p class="lead">Mount Shelby Protocol decentralised storage as a native drive on your Mac. Copy files in &mdash; they're pinned to the network. Read files &mdash; they're retrieved on demand.</p>
+
+    <!-- Installation -->
+    <h2 id="installation">Installation</h2>
+
+    <h3 id="prerequisites">Prerequisites</h3>
+    <p>ShelDrive requires <strong>FUSE-T</strong> to create a virtual filesystem on macOS. FUSE-T is a userspace implementation &mdash; no kernel extensions, no reduced security, no restart needed.</p>
+
+    <div class="code-block">
+      <span class="prompt">$</span> brew install --cask fuse-t
+    </div>
+
+    <p>You also need <strong>Node.js 20+</strong> installed (for the Shelby SDK sidecar).</p>
+
+    <div class="code-block">
+      <span class="prompt">$</span> brew install node
+    </div>
+
+    <h3>Install ShelDrive</h3>
+    <p>Download the latest <code>.dmg</code> from the <a href="https://github.com/TaffForest/ShelDrive/releases">releases page</a>, open it, and drag ShelDrive to your Applications folder.</p>
+
+    <p>Or build from source:</p>
+
+    <div class="code-block">
+      <span class="prompt">$</span> git clone https://github.com/TaffForest/ShelDrive.git<br>
+      <span class="prompt">$</span> cd ShelDrive<br>
+      <span class="prompt">$</span> npm install<br>
+      <span class="prompt">$</span> cd sidecar && npm install && npm run build && cd ..<br>
+      <span class="prompt">$</span> npx tauri build
+    </div>
+
+    <!-- Configuration -->
+    <h2 id="configuration">Configuration</h2>
+    <p>ShelDrive reads its configuration from <code>~/.sheldrive/config.toml</code>. Create it on first use:</p>
+
+    <div class="code-block">
+      <span class="prompt">$</span> mkdir -p ~/.sheldrive<br>
+      <span class="prompt">$</span> cat > ~/.sheldrive/config.toml &lt;&lt; <span class="string">'EOF'</span><br>
+      [shelby]<br>
+      network = <span class="string">"TESTNET"</span><br>
+      api_key = <span class="string">"your-api-key"</span><br>
+      rpc_url = <span class="string">"https://api.testnet.shelby.xyz/shelby"</span><br>
+      private_key = <span class="string">"your-ed25519-private-key-hex"</span><br>
+      <span class="string">EOF</span>
+    </div>
+
+    <table class="doc-table">
+      <thead>
+        <tr><th>Key</th><th>Description</th><th>Default</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>network</code></td><td>Shelby network to use</td><td><code>TESTNET</code></td></tr>
+        <tr><td><code>api_key</code></td><td>Your Shelby API key</td><td>&mdash;</td></tr>
+        <tr><td><code>rpc_url</code></td><td>Shelby RPC endpoint</td><td>Auto-detected</td></tr>
+        <tr><td><code>private_key</code></td><td>Ed25519 private key (hex)</td><td>&mdash;</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong>Mock mode</strong>
+      <p>Without a <code>private_key</code>, ShelDrive runs in mock mode &mdash; files are stored locally but not pinned to the Shelby network. This is useful for testing.</p>
+    </div>
+
+    <!-- First Mount -->
+    <h2 id="first-mount">First Mount</h2>
+    <ol>
+      <li>Launch <strong>ShelDrive</strong> from Applications</li>
+      <li>The app appears in your menu bar / system tray</li>
+      <li>Click the tray icon to open the panel</li>
+      <li>Click <strong>Mount</strong></li>
+      <li>A Finder window opens at <code>~/ShelDrive</code></li>
+      <li>Drag files in &mdash; they're pinned to Shelby</li>
+    </ol>
+
+    <!-- File Operations -->
+    <h2 id="file-operations">File Operations</h2>
+    <p>Once mounted, <code>~/ShelDrive</code> works like any folder. All standard operations are supported:</p>
+
+    <div class="code-block">
+      <span class="comment"># Write a file</span><br>
+      <span class="prompt">$</span> echo "hello" > ~/ShelDrive/test.txt<br><br>
+      <span class="comment"># Read it back</span><br>
+      <span class="prompt">$</span> cat ~/ShelDrive/test.txt<br><br>
+      <span class="comment"># Copy a file in</span><br>
+      <span class="prompt">$</span> cp ~/Documents/report.pdf ~/ShelDrive/<br><br>
+      <span class="comment"># Create directories</span><br>
+      <span class="prompt">$</span> mkdir ~/ShelDrive/photos<br><br>
+      <span class="comment"># Delete a file (unpins from Shelby)</span><br>
+      <span class="prompt">$</span> rm ~/ShelDrive/test.txt<br><br>
+      <span class="comment"># List directory</span><br>
+      <span class="prompt">$</span> ls ~/ShelDrive/
+    </div>
+
+    <p>You can also drag and drop files in Finder &mdash; it works the same way.</p>
+
+    <!-- Finder Integration -->
+    <h2 id="finder-integration">Finder Integration</h2>
+    <p>When you click Mount, a Finder window opens automatically showing the ShelDrive folder. To pin it to your sidebar permanently:</p>
+    <ol>
+      <li>Open the ShelDrive folder in Finder</li>
+      <li>Drag it from the window into the <strong>Favorites</strong> section of the sidebar</li>
+    </ol>
+
+    <!-- Offline Mode -->
+    <h2 id="offline-mode">Offline Mode</h2>
+    <p>ShelDrive works without internet. Files you write are stored in a local disk cache at <code>~/.sheldrive/cache/</code> and queued for upload when connectivity returns.</p>
+    <ul>
+      <li><strong>Writes:</strong> Always succeed &mdash; content goes to disk staging immediately</li>
+      <li><strong>Reads:</strong> Served from local cache if available, fetched from Shelby on cache miss</li>
+      <li><strong>Cache size:</strong> 512 MB LRU cache, oldest files evicted when full</li>
+    </ul>
+
+    <div class="callout">
+      <strong>Sidecar auto-restart</strong>
+      <p>If the Shelby SDK sidecar crashes, ShelDrive automatically restarts it up to 3 times. Your files remain safe in the local cache during any downtime.</p>
+    </div>
+
+    <!-- Content Filtering -->
+    <h2 id="content-filtering">Content Filtering</h2>
+    <p>ShelDrive includes built-in safety features to prevent dangerous or illegal content from being pinned to the decentralised network. All scanning runs <strong>locally on your device</strong> &mdash; no file content is sent to external services.</p>
+
+    <h3 id="blocked-types">Blocked File Types</h3>
+    <p>The following file types are blocked at creation time and cannot be written to the drive:</p>
+
+    <div class="code-block" style="columns: 3; column-gap: 24px;">
+      .exe &nbsp; .bat &nbsp; .cmd &nbsp; .scr<br>
+      .dll &nbsp; .com &nbsp; .msi &nbsp; .ps1<br>
+      .vbs &nbsp; .wsf &nbsp; .cpl &nbsp; .hta<br>
+      .inf &nbsp; .reg &nbsp; .pif &nbsp; .lnk<br>
+      .sys &nbsp; .sct &nbsp; .shb &nbsp; .wsc
+    </div>
+
+    <p>Attempting to create these files returns "Operation not permitted".</p>
+
+    <h3 id="size-limits">Size Limits</h3>
+    <table class="doc-table">
+      <thead>
+        <tr><th>Limit</th><th>Value</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Max file size</td><td><code>2 GB</code></td></tr>
+        <tr><td>Virtual drive capacity</td><td><code>1 TB</code> (reported to OS)</td></tr>
+        <tr><td>Local cache</td><td><code>512 MB</code> LRU</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Image Scanning</h3>
+    <p>Image files (<code>.jpg</code>, <code>.png</code>, <code>.gif</code>, <code>.webp</code>, <code>.bmp</code>) are validated before pinning to the Shelby network:</p>
+    <ul>
+      <li>File header validation &mdash; rejects files that claim to be images but aren't</li>
+      <li>NSFW content detection &mdash; on-device ML model (coming soon)</li>
+    </ul>
+
+    <!-- How It Works -->
+    <h2 id="how-it-works">How It Works</h2>
+
+    <div class="code-block" style="font-size: 12px; line-height: 1.6;">
+Your app (Finder, Terminal, etc.)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+macOS kernel &rarr; FUSE-T (userspace filesystem)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+ShelDriveFS (Rust) &mdash; handles read/write/delete<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&#9500; SQLite index &mdash; maps paths to Shelby CIDs<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&#9500; Disk staging &mdash; buffers writes to disk<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&#9492; Disk cache &mdash; LRU cache for fast reads<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+ShelbyBridge (JSON-RPC over stdio)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+Node.js sidecar &rarr; @shelby-protocol/sdk<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+Shelby Network (decentralised hot storage)
+    </div>
+
+    <h3>Write flow</h3>
+    <ol>
+      <li>File data written to disk staging at <code>~/.sheldrive/staging/</code></li>
+      <li>On file close, content is base64-encoded and sent to the sidecar</li>
+      <li>Sidecar calls <code>ShelbyClient.upload()</code> to pin to the network</li>
+      <li>Returned CID stored in SQLite, content moved to disk cache</li>
+    </ol>
+
+    <h3>Read flow</h3>
+    <ol>
+      <li>Check disk staging (file being actively written)</li>
+      <li>Check disk cache at <code>~/.sheldrive/cache/</code></li>
+      <li>Fetch from Shelby network via sidecar, cache locally</li>
+    </ol>
+
+    <!-- Data Locations -->
+    <h2 id="data-locations">Data Locations</h2>
+    <table class="doc-table">
+      <thead>
+        <tr><th>Path</th><th>Contents</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>~/ShelDrive/</code></td><td>FUSE mount point (virtual drive)</td></tr>
+        <tr><td><code>~/.sheldrive/config.toml</code></td><td>Configuration</td></tr>
+        <tr><td><code>~/.sheldrive/index.db</code></td><td>SQLite path &rarr; CID index</td></tr>
+        <tr><td><code>~/.sheldrive/cache/</code></td><td>LRU file content cache</td></tr>
+        <tr><td><code>~/.sheldrive/staging/</code></td><td>Active write buffers</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Tech Stack -->
+    <h2 id="tech-stack">Tech Stack</h2>
+    <table class="doc-table">
+      <thead>
+        <tr><th>Layer</th><th>Technology</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>App shell</td><td>Tauri v2 (Rust + WebView)</td></tr>
+        <tr><td>Filesystem</td><td>FUSE via <code>fuser</code> crate + FUSE-T</td></tr>
+        <tr><td>Storage SDK</td><td><code>@shelby-protocol/sdk</code></td></tr>
+        <tr><td>Local index</td><td>SQLite via <code>rusqlite</code></td></tr>
+        <tr><td>Frontend</td><td>React + TypeScript</td></tr>
+        <tr><td>IPC</td><td>JSON-RPC 2.0 over stdin/stdout</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Common Issues -->
+    <h2 id="common-issues">Common Issues</h2>
+
+    <h3>"File exists" error on mount</h3>
+    <p>A stale FUSE mount or leftover files at the mount point. ShelDrive auto-cleans on mount, but if it persists:</p>
+    <div class="code-block">
+      <span class="prompt">$</span> sudo umount -f ~/ShelDrive<br>
+      <span class="prompt">$</span> rm -rf ~/ShelDrive
+    </div>
+
+    <h3>"No space left on device"</h3>
+    <p>The virtual drive needs the <code>statfs</code> response from FUSE. If you see this, update to the latest version which reports 1TB virtual capacity.</p>
+
+    <h3>Sidecar shows "Mock mode"</h3>
+    <p>The Shelby SDK couldn't connect. Check your <code>~/.sheldrive/config.toml</code> has valid <code>api_key</code> and <code>private_key</code> values. Without a private key, ShelDrive runs in mock mode where files are stored locally only.</p>
+
+    <h3>Files not appearing in Finder</h3>
+    <p>Check the drive is actually mounted:</p>
+    <div class="code-block">
+      <span class="prompt">$</span> mount | grep ShelDrive<br>
+      <span class="prompt">$</span> ls ~/ShelDrive/
+    </div>
+
+    <h3>App shows white screen</h3>
+    <p>This happens when launching the dev build from the dock after the Vite server has stopped. Use the production build from <code>/Applications/ShelDrive.app</code> instead.</p>
+
+    <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-dim);">
+      &copy; 2026 ShelDrive &mdash; a <a href="https://forestinfra.com" target="_blank">Forest Infra</a> product. Powered by <a href="https://shelby.xyz" target="_blank">Shelby Protocol</a>.
+    </div>
+  </main>
+</div>
+
+<script>
+// Highlight active sidebar link on scroll
+const sections = document.querySelectorAll('h2[id], h3[id]');
+const links = document.querySelectorAll('.sidebar a');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.sidebar a[href="#${entry.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
