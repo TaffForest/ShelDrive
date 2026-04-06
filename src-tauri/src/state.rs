@@ -29,7 +29,9 @@ impl AppState {
             status: Mutex::new(AppStatus {
                 mount_status: MountStatus::Disconnected,
                 mount_point: if cfg!(target_os = "macos") {
-                    "/Volumes/ShelDrive".to_string()
+                    dirs::home_dir()
+                        .map(|h| h.join("ShelDrive").to_string_lossy().to_string())
+                        .unwrap_or_else(|| "/tmp/ShelDrive".to_string())
                 } else if cfg!(target_os = "windows") {
                     "S:\\".to_string()
                 } else {
