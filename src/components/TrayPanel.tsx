@@ -4,7 +4,7 @@ import { StatusIndicator } from "./StatusIndicator";
 import { MountControls } from "./MountControls";
 import { FileActivity } from "./FileActivity";
 import { Settings } from "./Settings";
-import { getFileCount, getShelbyStatus, type ShelbyStatus } from "../lib/tauri";
+import { getFileCount, getShelbyStatus, quitApp, type ShelbyStatus } from "../lib/tauri";
 
 export function TrayPanel() {
   const { status, loading, mount, unmount } = useMountStatus();
@@ -152,7 +152,7 @@ export function TrayPanel() {
               fontSize: 13,
             }}
           >
-            <Row label="Protocol" value="SHELBYNET" mono />
+            <Row label="Protocol" value={shelby.network} mono />
             <Row
               label="Sidecar"
               value={shelby.connected ? "Connected" : "Mock mode"}
@@ -179,19 +179,34 @@ export function TrayPanel() {
         }}
       >
         <span>Shelby Protocol</span>
-        <button
-          onClick={() => setView("settings")}
-          style={{
-            fontSize: 12,
-            color: "var(--text-muted)",
-            padding: "4px 12px",
-            border: "1px solid var(--border)",
-            borderRadius: 6,
-            transition: "all 0.15s",
-          }}
-        >
-          Settings
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => setView("settings")}
+            style={{
+              fontSize: 12,
+              color: "var(--text-muted)",
+              padding: "4px 12px",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              transition: "all 0.15s",
+            }}
+          >
+            Settings
+          </button>
+          <button
+            onClick={() => quitApp()}
+            style={{
+              fontSize: 12,
+              color: "var(--error, #f87171)",
+              padding: "4px 12px",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              transition: "all 0.15s",
+            }}
+          >
+            Quit
+          </button>
+        </div>
       </div>
     </div>
   );

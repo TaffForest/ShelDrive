@@ -72,6 +72,8 @@ pub fn unmount_drive(state: State<'_, AppState>) -> AppStatus {
 #[tauri::command]
 pub fn get_file_count(db: State<'_, Database>) -> Result<i64, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    // Force WAL read to see FUSE driver's writes from its separate connection
+    let _ = conn.execute_batch("BEGIN; END;");
     index::count_files(&conn).map_err(|e| e.to_string())
 }
 
@@ -83,6 +85,11 @@ pub fn get_shelby_status(bridge: State<'_, Arc<ShelbyBridge>>) -> Result<ShelbyS
 #[tauri::command]
 pub fn shelby_ping(bridge: State<'_, Arc<ShelbyBridge>>) -> Result<bool, String> {
     bridge.ping()
+}
+
+#[tauri::command]
+pub fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 fn db_path() -> String {

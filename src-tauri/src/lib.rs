@@ -10,60 +10,22 @@ use db::Database;
 use log::info;
 use state::AppState;
 use std::sync::Arc;
-use tauri::{
-    menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
-    Manager,
-};
+use tauri::{tray::TrayIconBuilder, Manager};
 
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let show_item = MenuItem::with_id(app, "show", "Show Panel", true, None::<&str>)?;
-    let quit_item = MenuItem::with_id(app, "quit", "Quit ShelDrive", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
-
     TrayIconBuilder::with_id("sheldrive-tray")
         .icon(app.default_window_icon().unwrap().clone())
         .icon_as_template(true)
-        .menu(&menu)
-        .show_menu_on_left_click(false)
-        .tooltip("ShelDrive — Disconnected")
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "show" => {
-                if let Some(window) = app.get_webview_window("tray-panel") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
-            }
-            "quit" => {
-                app.exit(0);
-            }
-            _ => {}
-        })
+        .tooltip("ShelDrive")
         .on_tray_icon_event(|tray, event| {
-            if let tauri::tray::TrayIconEvent::Click { button, .. } = event {
-                if button == tauri::tray::MouseButton::Left {
-                    let app = tray.app_handle();
-                    if let Some(window) = app.get_webview_window("tray-panel") {
-                        if window.is_visible().unwrap_or(false) {
-                            let _ = window.hide();
-                        } else {
-                            // Position window near tray icon
-                            if let Ok(Some(rect)) = tray.rect() {
-                                let (tx, ty) = match rect.position {
-                                    tauri::Position::Physical(p) => (p.x, p.y),
-                                    tauri::Position::Logical(p) => (p.x as i32, p.y as i32),
-                                };
-                                let th = match rect.size {
-                                    tauri::Size::Physical(s) => s.height as i32,
-                                    tauri::Size::Logical(s) => s.height as i32,
-                                };
-                                let _ = window.set_position(tauri::Position::Physical(
-                                    tauri::PhysicalPosition::new(tx - 160, ty + th),
-                                ));
-                            }
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+            if let tauri::tray::TrayIconEvent::Click { .. } = event {
+                let app = tray.app_handle();
+                if let Some(window) = app.get_webview_window("tray-panel") {
+                    if window.is_visible().unwrap_or(false) {
+                        let _ = window.hide();
+                    } else {
+                        let _ = window.show();
+                        let _ = window.set_focus();
                     }
                 }
             }
@@ -74,30 +36,34 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn sidecar_path() -> String {
-    let dev_path = std::env::current_dir()
+    let exe_dir = std::env::current_exe()
         .ok()
-        .map(|p| p.join("../sidecar/dist/index.js"))
-        .and_then(|p| p.canonicalize().ok())
-        .map(|p| p.to_string_lossy().to_string());
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
 
-    dev_path.unwrap_or_else(|| {
-        let exe_dir = std::env::current_exe()
+    // Check paths in priority order
+    let candidates = vec![
+        // Dev mode: relative to project root (cargo runs from src-tauri/)
+        std::env::current_dir()
             .ok()
-            .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+            .map(|p| p.join("../sidecar/dist/index.js")),
+        // Production macOS .app bundle: Contents/Resources/sidecar-dist/sidecar.mjs
+        exe_dir
+            .as_ref()
+            .map(|d| d.join("../Resources/sidecar-dist/sidecar.mjs")),
+        // Production sibling directory
+        exe_dir
+            .as_ref()
+            .map(|d| d.join("sidecar-dist/sidecar.mjs")),
+    ];
 
-        if let Some(dir) = exe_dir {
-            let app_bundle = dir.join("../Resources/sidecar/dist/index.js");
-            if app_bundle.exists() {
-                return app_bundle.to_string_lossy().to_string();
-            }
-            let sibling = dir.join("sidecar/dist/index.js");
-            if sibling.exists() {
-                return sibling.to_string_lossy().to_string();
-            }
+    for candidate in candidates.into_iter().flatten() {
+        if let Ok(resolved) = candidate.canonicalize() {
+            return resolved.to_string_lossy().to_string();
         }
+    }
 
-        "sidecar/dist/index.js".to_string()
-    })
+    // Fallback
+    "sidecar/dist/index.js".to_string()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -125,6 +91,7 @@ pub fn run() {
             commands::get_file_count,
             commands::get_shelby_status,
             commands::shelby_ping,
+            commands::quit_app,
         ])
         .setup(|app| {
             setup_tray(app)?;

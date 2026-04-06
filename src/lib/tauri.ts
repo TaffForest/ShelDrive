@@ -35,3 +35,7 @@ export async function getShelbyStatus(): Promise<ShelbyStatus> {
 export async function shelbyPing(): Promise<boolean> {
   return invoke<boolean>("shelby_ping");
 }
+
+export async function quitApp(): Promise<void> {
+  return invoke<void>("quit_app");
+}

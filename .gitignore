@@ -6,6 +6,7 @@ sidecar/node_modules/
 dist/
 src-tauri/target/
 sidecar/dist/
+src-tauri/sidecar-dist/
 
 # Environment / secrets
 .env

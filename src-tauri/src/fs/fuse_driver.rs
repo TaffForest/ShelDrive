@@ -578,6 +578,56 @@ impl Filesystem for ShelDriveFS {
         reply.ok();
     }
 
+    fn mknod(
+        &self,
+        _req: &Request,
+        parent: INodeNo,
+        name: &OsStr,
+        _mode: u32,
+        _umask: u32,
+        _rdev: u32,
+        reply: ReplyEntry,
+    ) {
+        let parent_raw = u64::from(parent);
+        debug!("mknod: parent={}, name={:?}", parent_raw, name);
+
+        let child_path = match self.resolve_path(parent_raw, name) {
+            Some(p) => p,
+            None => {
+                reply.error(Errno::EINVAL);
+                return;
+            }
+        };
+
+        let conn = self.db.lock().unwrap();
+        if get_file_by_path(&conn, &child_path).is_ok() {
+            reply.error(Errno::EEXIST);
+            return;
+        }
+
+        let entry = FileEntry {
+            id: 0,
+            path: child_path.clone(),
+            cid: "pending".to_string(),
+            size_bytes: 0,
+            mime_type: None,
+            pinned_at: Self::now_iso(),
+            modified_at: Self::now_iso(),
+            metadata: None,
+        };
+
+        match insert_file(&conn, &entry) {
+            Ok(_) => {
+                let ino = self.alloc_file_ino(&child_path);
+                reply.entry(&TTL, &self.make_file_attr(ino, &entry), Generation(0));
+            }
+            Err(e) => {
+                error!("mknod failed: {}", e);
+                reply.error(Errno::EIO);
+            }
+        }
+    }
+
     fn create(
         &self,
         _req: &Request,

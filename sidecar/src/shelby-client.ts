@@ -49,8 +49,15 @@ export async function initialize(config: SidecarConfig): Promise<boolean> {
       privateKey: new aptosSDK.Ed25519PrivateKey(config.privateKey),
     });
 
+    // Map config network string to SDK Network enum
+    const networkMap: Record<string, any> = {
+      TESTNET: aptosSDK.Network.TESTNET,
+      SHELBYNET: (aptosSDK.Network as any).SHELBYNET ?? aptosSDK.Network.TESTNET,
+      LOCAL: aptosSDK.Network.LOCAL,
+    };
+
     const clientConfig: any = {
-      network: aptosSDK.Network.SHELBYNET,
+      network: networkMap[config.network] ?? aptosSDK.Network.TESTNET,
     };
 
     if (config.apiKey) {

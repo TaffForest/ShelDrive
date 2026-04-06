@@ -180,11 +180,21 @@ impl ShelbyBridge {
 
         info!("Starting sidecar: {}", self.sidecar_path);
 
-        let mut cmd = Command::new("node");
+        let node_bin = find_node();
+        info!("Using node: {}", node_bin);
+        let mut cmd = Command::new(&node_bin);
         cmd.arg(&self.sidecar_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+
+        // Set NODE_PATH so bundled sidecar can find SDK node_modules
+        if let Some(sidecar_dir) = std::path::Path::new(&self.sidecar_path).parent() {
+            let node_modules = sidecar_dir.join("node_modules");
+            if node_modules.exists() {
+                cmd.env("NODE_PATH", &node_modules);
+            }
+        }
 
         cmd.env("SHELBY_NETWORK", &self.config.network);
         if let Some(ref key) = self.config.api_key {
@@ -405,6 +415,23 @@ impl ShelbyBridge {
     pub fn reset_restart_count(&self) {
         self.restart_count.store(0, Ordering::Relaxed);
     }
+}
+
+/// Find the node binary — GUI apps on macOS don't inherit shell PATH.
+fn find_node() -> String {
+    let candidates = [
+        "/opt/homebrew/bin/node",
+        "/usr/local/bin/node",
+        "/usr/bin/node",
+        "/opt/local/bin/node",
+    ];
+    for path in &candidates {
+        if std::path::Path::new(path).exists() {
+            return path.to_string();
+        }
+    }
+    // Fallback — hope it's on PATH
+    "node".to_string()
 }
 
 impl Drop for ShelbyBridge {
