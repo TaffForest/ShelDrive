@@ -5,15 +5,35 @@ use crate::fs::fuse_driver;
 use crate::state::{AppState, AppStatus, MountStatus};
 use log::{error, info};
 use std::sync::Arc;
-use tauri::State;
+use tauri::{image::Image, Manager, State};
 
 #[tauri::command]
 pub fn get_status(state: State<'_, AppState>) -> AppStatus {
     state.status.lock().unwrap().clone()
 }
 
+fn update_tray_icon(app: &tauri::AppHandle, mounted: bool) {
+    if let Some(tray) = app.tray_by_id("sheldrive-tray") {
+        let icon_bytes: &[u8] = if mounted {
+            include_bytes!("../icons/tray-connected.png")
+        } else {
+            include_bytes!("../icons/tray-disconnected.png")
+        };
+        if let Ok(img) = Image::from_bytes(icon_bytes) {
+            let _ = tray.set_icon(Some(img));
+        }
+        let tooltip = if mounted {
+            "ShelDrive — Mounted"
+        } else {
+            "ShelDrive — Disconnected"
+        };
+        let _ = tray.set_tooltip(Some(tooltip));
+    }
+}
+
 #[tauri::command]
 pub fn mount_drive(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     bridge: State<'_, Arc<ShelbyBridge>>,
 ) -> AppStatus {
@@ -44,6 +64,7 @@ pub fn mount_drive(
             let _ = std::process::Command::new("open")
                 .arg(&mount_point)
                 .output();
+            update_tray_icon(&app, true);
         }
         Err(e) => {
             error!("Mount failed: {}", e);
@@ -56,7 +77,7 @@ pub fn mount_drive(
 }
 
 #[tauri::command]
-pub fn unmount_drive(state: State<'_, AppState>) -> AppStatus {
+pub fn unmount_drive(app: tauri::AppHandle, state: State<'_, AppState>) -> AppStatus {
     let mut status = state.status.lock().unwrap();
 
     if status.mount_status == MountStatus::Disconnected {
@@ -74,6 +95,7 @@ pub fn unmount_drive(state: State<'_, AppState>) -> AppStatus {
     status.mount_status = MountStatus::Disconnected;
     status.error_message = None;
     info!("ShelDrive unmounted");
+    update_tray_icon(&app, false);
 
     status.clone()
 }
