@@ -43,13 +43,23 @@ pub fn mount_drive(
         return status.clone();
     }
 
-    // Check if FUSE is available
+    // Auto-install FUSE-T if not present
     if !is_fuse_installed() {
-        status.mount_status = MountStatus::Error;
-        status.error_message = Some(
-            "FUSE-T is required. Install it free at https://fuse-t.org or run: brew install --cask fuse-t".to_string()
-        );
-        return status.clone();
+        info!("FUSE not found — installing FUSE-T...");
+        status.mount_status = MountStatus::Connecting;
+        status.error_message = Some("Installing FUSE-T...".to_string());
+        drop(status);
+
+        if let Err(e) = install_fuse_t() {
+            let mut s = state.status.lock().unwrap();
+            s.mount_status = MountStatus::Error;
+            s.error_message = Some(format!("Failed to install FUSE-T: {}. Install manually: brew install --cask fuse-t", e));
+            return s.clone();
+        }
+
+        info!("FUSE-T installed successfully");
+        status = state.status.lock().unwrap();
+        status.error_message = None;
     }
 
     let mount_point = status.mount_point.clone();
@@ -199,6 +209,50 @@ fn extract_value(content: &str, key: &str) -> Option<String> {
 #[tauri::command]
 pub fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
+}
+
+fn install_fuse_t() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let tmp_pkg = "/tmp/fuse-t.pkg";
+
+        // Download FUSE-T installer
+        info!("Downloading FUSE-T...");
+        let dl = std::process::Command::new("curl")
+            .args(["-fsSL", "-o", tmp_pkg, "https://github.com/macos-fuse-t/fuse-t/releases/download/1.2.0/fuse-t-macos-installer-1.2.0.pkg"])
+            .output()
+            .map_err(|e| format!("Download failed: {}", e))?;
+
+        if !dl.status.success() {
+            return Err(format!("Download failed: {}", String::from_utf8_lossy(&dl.stderr)));
+        }
+
+        // Install with osascript to get admin privileges via GUI prompt
+        info!("Installing FUSE-T (will prompt for password)...");
+        let install = std::process::Command::new("osascript")
+            .args([
+                "-e",
+                &format!(
+                    "do shell script \"installer -pkg {} -target /\" with administrator privileges",
+                    tmp_pkg
+                ),
+            ])
+            .output()
+            .map_err(|e| format!("Install failed: {}", e))?;
+
+        let _ = std::fs::remove_file(tmp_pkg);
+
+        if install.status.success() {
+            Ok(())
+        } else {
+            Err(String::from_utf8_lossy(&install.stderr).to_string())
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("Auto-install only supported on macOS".to_string())
+    }
 }
 
 fn is_fuse_installed() -> bool {
