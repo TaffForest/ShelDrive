@@ -855,7 +855,6 @@ pub fn mount(
     let mut config = Config::default();
     config.mount_options = vec![
         MountOption::FSName("ShelDrive".to_string()),
-        MountOption::AutoUnmount,
         MountOption::DefaultPermissions,
     ];
 

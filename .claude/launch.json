@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "marketing",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["-e", "require('http').createServer((q,r)=>{const fs=require('fs'),p=require('path'),f=p.join('marketing',q.url==='/'?'index.html':q.url);fs.readFile(f,(e,d)=>{if(e){r.writeHead(404);r.end('Not found')}else{r.writeHead(200,{'Content-Type':'text/html'});r.end(d)}})}).listen(3456)"],
+      "port": 3456
+    }
+  ]
+}

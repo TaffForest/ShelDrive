@@ -25,6 +25,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .icon(app.default_window_icon().unwrap().clone())
         .icon_as_template(true)
         .menu(&menu)
+        .show_menu_on_left_click(false)
         .tooltip("ShelDrive — Disconnected")
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => {
@@ -46,6 +47,20 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                         if window.is_visible().unwrap_or(false) {
                             let _ = window.hide();
                         } else {
+                            // Position window near tray icon
+                            if let Ok(Some(rect)) = tray.rect() {
+                                let (tx, ty) = match rect.position {
+                                    tauri::Position::Physical(p) => (p.x, p.y),
+                                    tauri::Position::Logical(p) => (p.x as i32, p.y as i32),
+                                };
+                                let th = match rect.size {
+                                    tauri::Size::Physical(s) => s.height as i32,
+                                    tauri::Size::Logical(s) => s.height as i32,
+                                };
+                                let _ = window.set_position(tauri::Position::Physical(
+                                    tauri::PhysicalPosition::new(tx - 160, ty + th),
+                                ));
+                            }
                             let _ = window.show();
                             let _ = window.set_focus();
                         }
@@ -59,8 +74,6 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn sidecar_path() -> String {
-    // In development, use the sidecar source directly via tsx
-    // In production, this would point to the bundled compiled JS
     let dev_path = std::env::current_dir()
         .ok()
         .map(|p| p.join("../sidecar/dist/index.js"))
@@ -68,18 +81,15 @@ fn sidecar_path() -> String {
         .map(|p| p.to_string_lossy().to_string());
 
     dev_path.unwrap_or_else(|| {
-        // Fallback: look relative to the binary
         let exe_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|d| d.to_path_buf()));
 
         if let Some(dir) = exe_dir {
-            // Check macOS .app bundle resources
             let app_bundle = dir.join("../Resources/sidecar/dist/index.js");
             if app_bundle.exists() {
                 return app_bundle.to_string_lossy().to_string();
             }
-            // Check sibling sidecar dir
             let sibling = dir.join("sidecar/dist/index.js");
             if sibling.exists() {
                 return sibling.to_string_lossy().to_string();
@@ -99,7 +109,6 @@ pub fn run() {
 
     let bridge = Arc::new(ShelbyBridge::new(&sidecar));
 
-    // Start sidecar immediately
     if let Err(e) = bridge.start() {
         log::error!("Failed to start Shelby sidecar: {}", e);
     }

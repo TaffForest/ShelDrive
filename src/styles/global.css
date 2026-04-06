@@ -1,18 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
-  --accent: #00FFB2;
-  --accent-dim: #00cc8e;
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #111111;
-  --bg-tertiary: #1a1a1a;
-  --bg-hover: #222222;
-  --border: #2a2a2a;
-  --text-primary: #e0e0e0;
-  --text-secondary: #888888;
-  --text-muted: #555555;
-  --error: #ff4444;
-  --warning: #ffaa00;
+  --bg-dark: #050505;
+  --bg-card: #0d0d0d;
+  --bg-surface: #141414;
+  --bg-hover: #1e1e1e;
+  --border: #1a1a1a;
+  --accent: #8BC53F;
+  --accent-dark: #6BA030;
+  --accent-glow: rgba(139, 197, 63, 0.3);
+  --text: #e8e8e8;
+  --text-muted: #999;
+  --text-dim: #555;
+  --success: #4ade80;
+  --error: #f87171;
+  --warning: #f59e0b;
 }
 
 * {
@@ -25,13 +27,17 @@ html, body, #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  background: var(--bg-dark);
+  color: var(--text);
+  font-family: 'DM Sans', -apple-system, sans-serif;
   font-size: 13px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   user-select: none;
+}
+
+code, .mono {
+  font-family: 'JetBrains Mono', monospace;
 }
 
 button {
@@ -49,11 +55,11 @@ button:disabled {
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: var(--bg-dark);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -62,5 +68,5 @@ button:disabled {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: var(--text-dim);
 }

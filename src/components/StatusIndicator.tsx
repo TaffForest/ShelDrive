@@ -1,32 +1,31 @@
 import type { AppStatus } from "../lib/tauri";
 
 const STATUS_CONFIG = {
-  disconnected: { color: "#555555", label: "DISCONNECTED", pulse: false },
-  connecting: { color: "#ffaa00", label: "CONNECTING", pulse: true },
-  mounted: { color: "#00FFB2", label: "MOUNTED", pulse: false },
-  error: { color: "#ff4444", label: "ERROR", pulse: true },
+  disconnected: { color: "#555", label: "Disconnected", pulse: false },
+  connecting: { color: "#f59e0b", label: "Connecting", pulse: true },
+  mounted: { color: "#8BC53F", label: "Mounted", pulse: false },
+  error: { color: "#f87171", label: "Error", pulse: true },
 } as const;
 
 export function StatusIndicator({ status }: { status: AppStatus }) {
   const config = STATUS_CONFIG[status.mount_status];
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <div
         style={{
-          width: 10,
-          height: 10,
+          width: 8,
+          height: 8,
           borderRadius: "50%",
           backgroundColor: config.color,
-          boxShadow: `0 0 8px ${config.color}80`,
+          boxShadow: config.pulse ? undefined : `0 0 6px ${config.color}60`,
           animation: config.pulse ? "pulse 1.5s ease-in-out infinite" : "none",
         }}
       />
       <span
         style={{
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: "0.1em",
+          fontSize: 12,
+          fontWeight: 500,
           color: config.color,
         }}
       >

@@ -18,72 +18,53 @@ export function MountControls({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-        }}
-      >
+      <div style={{ display: "flex", gap: 10 }}>
         <button
           onClick={onMount}
           disabled={isMounted || isConnecting || loading}
           style={{
             flex: 1,
-            padding: "10px 0",
-            fontSize: 12,
+            padding: "11px 0",
+            fontSize: 14,
             fontWeight: 600,
-            letterSpacing: "0.05em",
-            border: "1px solid var(--accent)",
-            color: isMounted || loading ? "var(--text-muted)" : "var(--bg-primary)",
+            borderRadius: 6,
+            border: "none",
+            color: isMounted || loading ? "var(--text-muted)" : "#050505",
             backgroundColor:
-              isMounted || loading ? "transparent" : "var(--accent)",
+              isMounted || loading ? "var(--bg-surface)" : "var(--accent)",
             transition: "all 0.15s ease",
           }}
         >
-          {isConnecting ? "CONNECTING..." : "MOUNT"}
+          {isConnecting ? "Connecting..." : "Mount"}
         </button>
         <button
           onClick={onUnmount}
           disabled={!isMounted || loading}
           style={{
             flex: 1,
-            padding: "10px 0",
-            fontSize: 12,
-            fontWeight: 600,
-            letterSpacing: "0.05em",
+            padding: "11px 0",
+            fontSize: 14,
+            fontWeight: 500,
+            borderRadius: 6,
             border: "1px solid var(--border)",
-            color:
-              !isMounted || loading ? "var(--text-muted)" : "var(--text-primary)",
+            color: !isMounted || loading ? "var(--text-dim)" : "var(--text)",
             backgroundColor: "transparent",
             transition: "all 0.15s ease",
           }}
         >
-          UNMOUNT
+          Unmount
         </button>
-      </div>
-
-      <div
-        style={{
-          fontSize: 11,
-          color: "var(--text-secondary)",
-          display: "flex",
-          justifyContent: "space-between",
-        }}
-      >
-        <span>mount point</span>
-        <span style={{ color: "var(--text-primary)" }}>
-          {status.mount_point}
-        </span>
       </div>
 
       {status.error_message && (
         <div
           style={{
-            fontSize: 11,
+            fontSize: 12,
             color: "var(--error)",
-            padding: "8px 10px",
-            backgroundColor: "#ff444410",
-            border: "1px solid #ff444430",
+            padding: "10px 12px",
+            backgroundColor: "rgba(248, 113, 113, 0.06)",
+            border: "1px solid rgba(248, 113, 113, 0.15)",
+            borderRadius: 8,
           }}
         >
           {status.error_message}

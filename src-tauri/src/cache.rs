@@ -1,6 +1,6 @@
 use log::{debug, info, warn};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// On-disk LRU file cache at ~/.sheldrive/cache/
 /// Files are stored by CID hash to avoid filesystem-unsafe characters.

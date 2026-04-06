@@ -16,104 +16,95 @@ export function Settings({ onClose }: SettingsProps) {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "var(--bg-primary)",
-        border: "1px solid var(--border)",
+        background: "var(--bg-dark)",
       }}
     >
-      {/* Header */}
       <div
         style={{
-          padding: "16px 20px",
+          padding: "14px 18px",
           borderBottom: "1px solid var(--border)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
         }}
       >
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            letterSpacing: "0.05em",
-            color: "var(--text-primary)",
-          }}
-        >
-          SETTINGS
-        </span>
+        <span style={{ fontSize: 14, fontWeight: 600 }}>Settings</span>
         <button
           onClick={onClose}
           style={{
-            fontSize: 11,
-            color: "var(--text-secondary)",
-            padding: "4px 10px",
+            fontSize: 13,
+            color: "var(--text-muted)",
+            padding: "5px 14px",
             border: "1px solid var(--border)",
+            borderRadius: 6,
+            transition: "all 0.15s",
           }}
         >
-          BACK
+          Back
         </button>
       </div>
 
-      {/* Fields */}
       <div
         style={{
           flex: 1,
-          padding: "20px",
+          padding: "18px",
           display: "flex",
           flexDirection: "column",
           gap: 16,
           overflowY: "auto",
         }}
       >
-        <SettingsField
-          label="SHELBY NODE URL"
+        <Field
+          label="Shelby Node URL"
           value={nodeUrl}
           onChange={setNodeUrl}
           placeholder="https://api.shelbynet.shelby.xyz/shelby"
         />
-        <SettingsField
-          label="API KEY"
+        <Field
+          label="API Key"
           value={apiKey}
           onChange={setApiKey}
           placeholder="AG-..."
           type="password"
         />
-        <SettingsField
-          label="MOUNT POINT"
+        <Field
+          label="Mount Point"
           value={mountPoint}
           onChange={setMountPoint}
           placeholder="/Volumes/ShelDrive"
         />
-        <SettingsField
-          label="CACHE SIZE (MB)"
+        <Field
+          label="Cache Size (MB)"
           value={cacheSize}
           onChange={setCacheSize}
           placeholder="512"
         />
 
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 4 }}>
           <button
             style={{
               width: "100%",
-              padding: "10px 0",
-              fontSize: 12,
+              padding: "11px 0",
+              fontSize: 14,
               fontWeight: 600,
-              letterSpacing: "0.05em",
-              border: "1px solid var(--accent)",
-              color: "var(--bg-primary)",
-              backgroundColor: "var(--accent)",
+              borderRadius: 6,
+              border: "none",
+              color: "#050505",
+              background: "var(--accent)",
+              transition: "all 0.15s",
             }}
           >
-            SAVE
+            Save
           </button>
           <div
             style={{
-              fontSize: 10,
-              color: "var(--text-muted)",
+              fontSize: 11,
+              color: "var(--text-dim)",
               marginTop: 8,
               textAlign: "center",
             }}
           >
-            Changes saved to ~/.sheldrive/config.toml
+            Saves to ~/.sheldrive/config.toml
           </div>
         </div>
       </div>
@@ -121,7 +112,7 @@ export function Settings({ onClose }: SettingsProps) {
   );
 }
 
-function SettingsField({
+function Field({
   label,
   value,
   onChange,
@@ -138,10 +129,10 @@ function SettingsField({
     <div>
       <div
         style={{
-          fontSize: 10,
+          fontSize: 12,
+          fontWeight: 500,
           color: "var(--text-muted)",
           marginBottom: 6,
-          letterSpacing: "0.08em",
         }}
       >
         {label}
@@ -153,14 +144,16 @@ function SettingsField({
         placeholder={placeholder}
         style={{
           width: "100%",
-          padding: "8px 10px",
-          fontSize: 12,
-          fontFamily: "inherit",
-          backgroundColor: "var(--bg-secondary)",
+          padding: "9px 12px",
+          fontSize: 13,
+          fontFamily: "'JetBrains Mono', monospace",
+          background: "var(--bg-card)",
           border: "1px solid var(--border)",
-          color: "var(--text-primary)",
+          borderRadius: 8,
+          color: "var(--text)",
           outline: "none",
           boxSizing: "border-box",
+          transition: "border-color 0.15s",
         }}
       />
     </div>

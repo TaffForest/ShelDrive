@@ -44,36 +44,29 @@ export function TrayPanel() {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "var(--bg-primary)",
-        border: "1px solid var(--border)",
+        background: "var(--bg-dark)",
       }}
     >
       {/* Header */}
       <div
         style={{
-          padding: "16px 20px",
+          padding: "14px 18px",
           borderBottom: "1px solid var(--border)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-              color: "var(--accent)",
-            }}
-          >
-            SHELDRIVE
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16, fontWeight: 700 }}>
+            Shel<span style={{ color: "var(--accent)" }}>Drive</span>
           </span>
           <span
             style={{
               fontSize: 10,
-              color: "var(--text-muted)",
+              color: "var(--text-dim)",
               fontWeight: 400,
+              fontFamily: "'JetBrains Mono', monospace",
             }}
           >
             v0.1.0
@@ -86,54 +79,41 @@ export function TrayPanel() {
       <div
         style={{
           flex: 1,
-          padding: "20px",
+          padding: "16px 18px",
           display: "flex",
           flexDirection: "column",
-          gap: 16,
+          gap: 14,
           overflowY: "auto",
         }}
       >
-        {/* Drive visualization */}
+        {/* Drive card */}
         <div
           style={{
-            padding: "20px",
-            backgroundColor: "var(--bg-secondary)",
+            padding: "20px 18px",
+            background: "var(--bg-card)",
             border: "1px solid var(--border)",
+            borderRadius: 12,
           }}
         >
           <div
+            className="mono"
             style={{
-              fontSize: 11,
-              color: "var(--text-muted)",
-              marginBottom: 12,
-              letterSpacing: "0.08em",
-            }}
-          >
-            VIRTUAL DRIVE
-          </div>
-          <div
-            style={{
-              fontSize: 28,
+              fontSize: 20,
               fontWeight: 700,
               color:
                 status.mount_status === "mounted"
                   ? "var(--accent)"
-                  : "var(--text-muted)",
-              letterSpacing: "0.02em",
-              marginBottom: 8,
+                  : "var(--text-dim)",
+              letterSpacing: "-0.3px",
+              marginBottom: 6,
             }}
           >
-            S:\
+            {status.mount_point}
           </div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "var(--text-secondary)",
-            }}
-          >
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
             {status.mount_status === "mounted"
-              ? "Shelby network storage mounted and accessible"
-              : "Drive not mounted \u2014 click MOUNT to connect"}
+              ? "Shelby network storage mounted"
+              : "Click Mount to connect"}
           </div>
         </div>
 
@@ -148,65 +128,51 @@ export function TrayPanel() {
         {/* Network info */}
         <div
           style={{
-            padding: "16px 20px",
-            backgroundColor: "var(--bg-secondary)",
+            padding: "16px 18px",
+            background: "var(--bg-card)",
             border: "1px solid var(--border)",
+            borderRadius: 12,
           }}
         >
           <div
             style={{
-              fontSize: 11,
+              fontSize: 12,
+              fontWeight: 600,
               color: "var(--text-muted)",
               marginBottom: 10,
-              letterSpacing: "0.08em",
             }}
           >
-            NETWORK
+            Network
           </div>
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: 6,
-              fontSize: 11,
+              gap: 7,
+              fontSize: 13,
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--text-secondary)" }}>protocol</span>
-              <span>SHELBYNET</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--text-secondary)" }}>sidecar</span>
-              <span
-                style={{
-                  color: shelby.connected
-                    ? "var(--accent)"
-                    : "var(--text-muted)",
-                }}
-              >
-                {shelby.connected ? "connected" : "mock mode"}
-              </span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--text-secondary)" }}>
-                pinned files
-              </span>
-              <span>{fileCount}</span>
-            </div>
+            <Row label="Protocol" value="SHELBYNET" mono />
+            <Row
+              label="Sidecar"
+              value={shelby.connected ? "Connected" : "Mock mode"}
+              accent={shelby.connected}
+            />
+            <Row label="Pinned files" value={String(fileCount)} mono />
           </div>
         </div>
 
-        {/* Activity feed */}
+        {/* Activity */}
         <FileActivity />
       </div>
 
       {/* Footer */}
       <div
         style={{
-          padding: "12px 20px",
+          padding: "10px 18px",
           borderTop: "1px solid var(--border)",
-          fontSize: 10,
-          color: "var(--text-muted)",
+          fontSize: 12,
+          color: "var(--text-dim)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -216,15 +182,44 @@ export function TrayPanel() {
         <button
           onClick={() => setView("settings")}
           style={{
-            fontSize: 10,
-            color: "var(--text-secondary)",
-            padding: "2px 8px",
+            fontSize: 12,
+            color: "var(--text-muted)",
+            padding: "4px 12px",
             border: "1px solid var(--border)",
+            borderRadius: 6,
+            transition: "all 0.15s",
           }}
         >
-          SETTINGS
+          Settings
         </button>
       </div>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  value,
+  mono,
+  accent,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  accent?: boolean;
+}) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <span style={{ color: "var(--text-muted)" }}>{label}</span>
+      <span
+        className={mono ? "mono" : undefined}
+        style={{
+          color: accent ? "var(--accent)" : "var(--text)",
+          fontSize: mono ? 12 : 13,
+        }}
+      >
+        {value}
+      </span>
     </div>
   );
 }
