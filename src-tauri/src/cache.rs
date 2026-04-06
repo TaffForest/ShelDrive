@@ -1,9 +1,9 @@
 use log::{debug, info, warn};
 use std::fs;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
 /// On-disk LRU file cache at ~/.sheldrive/cache/
-/// Files are stored by CID hash to avoid filesystem-unsafe characters.
 pub struct DiskCache {
     dir: PathBuf,
     max_bytes: u64,
@@ -23,14 +23,12 @@ impl DiskCache {
         Self { dir, max_bytes }
     }
 
-    /// Get cached content by CID.
     pub fn get(&self, cid: &str) -> Option<Vec<u8>> {
         let path = self.cid_path(cid);
         if path.exists() {
             match fs::read(&path) {
                 Ok(data) => {
                     debug!("Cache hit: {}", cid);
-                    // Touch the file to update mtime for LRU
                     let _ = filetime::set_file_mtime(&path, filetime::FileTime::now());
                     Some(data)
                 }
@@ -44,7 +42,6 @@ impl DiskCache {
         }
     }
 
-    /// Store content in cache.
     pub fn put(&self, cid: &str, data: &[u8]) {
         let path = self.cid_path(cid);
         match fs::write(&path, data) {
@@ -58,21 +55,11 @@ impl DiskCache {
         }
     }
 
-    /// Remove a CID from cache.
     pub fn remove(&self, cid: &str) {
         let path = self.cid_path(cid);
         let _ = fs::remove_file(&path);
     }
 
-    /// Total size of cache directory in bytes.
-    pub fn size_bytes(&self) -> u64 {
-        self.list_entries()
-            .iter()
-            .map(|(_, size, _)| *size)
-            .sum()
-    }
-
-    /// Evict oldest files until under max_bytes.
     fn evict_if_needed(&self) {
         let mut entries = self.list_entries();
         let total: u64 = entries.iter().map(|(_, size, _)| *size).sum();
@@ -81,7 +68,6 @@ impl DiskCache {
             return;
         }
 
-        // Sort by mtime ascending (oldest first)
         entries.sort_by_key(|(_, _, mtime)| *mtime);
 
         let mut current = total;
@@ -97,7 +83,6 @@ impl DiskCache {
     }
 
     fn cid_path(&self, cid: &str) -> PathBuf {
-        // Replace unsafe chars in CID for filesystem use
         let safe_name: String = cid
             .chars()
             .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
@@ -123,5 +108,94 @@ impl DiskCache {
             }
         }
         entries
+    }
+}
+
+/// Disk-backed staging area for file writes.
+/// Files are written here during FUSE write() calls, then moved to cache
+/// or uploaded to Shelby on flush/release.
+pub struct StagingArea {
+    dir: PathBuf,
+}
+
+impl StagingArea {
+    pub fn new() -> Self {
+        let dir = dirs::home_dir()
+            .expect("Could not determine home directory")
+            .join(".sheldrive")
+            .join("staging");
+
+        if let Err(e) = fs::create_dir_all(&dir) {
+            warn!("Failed to create staging dir {:?}: {}", dir, e);
+        }
+
+        Self { dir }
+    }
+
+    /// Write data at a given offset into the staging file for an inode.
+    pub fn write(&self, ino: u64, offset: u64, data: &[u8]) -> std::io::Result<usize> {
+        let path = self.ino_path(ino);
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(&path)?;
+        file.seek(SeekFrom::Start(offset))?;
+        file.write_all(data)?;
+        Ok(data.len())
+    }
+
+    /// Read data from the staging file at a given offset.
+    pub fn read(&self, ino: u64, offset: u64, size: u32) -> Option<Vec<u8>> {
+        let path = self.ino_path(ino);
+        if !path.exists() {
+            return None;
+        }
+        let mut file = fs::File::open(&path).ok()?;
+        let file_len = file.metadata().ok()?.len();
+        if offset >= file_len {
+            return Some(vec![]);
+        }
+        file.seek(SeekFrom::Start(offset)).ok()?;
+        let read_size = size.min((file_len - offset) as u32) as usize;
+        let mut buf = vec![0u8; read_size];
+        file.read_exact(&mut buf).ok()?;
+        Some(buf)
+    }
+
+    /// Read the entire staging file content.
+    pub fn read_all(&self, ino: u64) -> Option<Vec<u8>> {
+        let path = self.ino_path(ino);
+        fs::read(&path).ok()
+    }
+
+    /// Get the size of the staging file.
+    pub fn size(&self, ino: u64) -> Option<u64> {
+        let path = self.ino_path(ino);
+        fs::metadata(&path).ok().map(|m| m.len())
+    }
+
+    /// Check if a staging file exists for this inode.
+    pub fn exists(&self, ino: u64) -> bool {
+        self.ino_path(ino).exists()
+    }
+
+    /// Truncate a staging file to a given size.
+    pub fn truncate(&self, ino: u64, size: u64) -> std::io::Result<()> {
+        let path = self.ino_path(ino);
+        let file = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(&path)?;
+        file.set_len(size)?;
+        Ok(())
+    }
+
+    /// Remove the staging file for an inode.
+    pub fn remove(&self, ino: u64) {
+        let _ = fs::remove_file(self.ino_path(ino));
+    }
+
+    fn ino_path(&self, ino: u64) -> PathBuf {
+        self.dir.join(format!("{:x}", ino))
     }
 }

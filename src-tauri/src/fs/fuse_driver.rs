@@ -1,5 +1,5 @@
 use crate::bridge::shelby::ShelbyBridge;
-use crate::cache::DiskCache;
+use crate::cache::{DiskCache, StagingArea};
 use crate::db::index::{
     self, delete_directory, delete_file_by_path, get_directory, get_file_by_path, insert_directory,
     insert_file, list_directory, DirItem, FileEntry,
@@ -32,13 +32,12 @@ pub struct ShelDriveFS {
     db: Mutex<Connection>,
     bridge: Arc<ShelbyBridge>,
     disk_cache: DiskCache,
+    staging: StagingArea,
     dir_ino_map: Mutex<HashMap<u64, String>>,
     file_ino_map: Mutex<HashMap<u64, String>>,
     path_ino_map: Mutex<HashMap<String, u64>>,
     next_dir_ino: Mutex<u64>,
     next_file_ino: Mutex<u64>,
-    /// In-memory write buffer — content is held here until flushed to Shelby
-    file_content: Mutex<HashMap<u64, Vec<u8>>>,
     /// Inodes that have been written to but not yet synced to Shelby
     dirty_inodes: Mutex<HashSet<u64>>,
     next_fh: Mutex<u64>,
@@ -53,12 +52,12 @@ impl ShelDriveFS {
             db: Mutex::new(conn),
             bridge,
             disk_cache: DiskCache::new(DEFAULT_CACHE_MAX_BYTES),
+            staging: StagingArea::new(),
             dir_ino_map: Mutex::new(HashMap::new()),
             file_ino_map: Mutex::new(HashMap::new()),
             path_ino_map: Mutex::new(HashMap::new()),
             next_dir_ino: Mutex::new(2),
             next_file_ino: Mutex::new(FILE_INO_OFFSET),
-            file_content: Mutex::new(HashMap::new()),
             dirty_inodes: Mutex::new(HashSet::new()),
             next_fh: Mutex::new(1),
         };
@@ -207,14 +206,11 @@ impl ShelDriveFS {
             None => return,
         };
 
-        let content = match self.file_content.lock().unwrap().get(&ino).cloned() {
-            Some(c) => c,
-            None => return,
+        // Read content from staging file on disk (not memory)
+        let content = match self.staging.read_all(ino) {
+            Some(c) if !c.is_empty() => c,
+            _ => return,
         };
-
-        if content.is_empty() {
-            return;
-        }
 
         let content_b64 = BASE64.encode(&content);
         let filename = path.rsplit('/').next().unwrap_or(&path);
@@ -224,8 +220,9 @@ impl ShelDriveFS {
         match self.bridge.pin(&content_b64, Some(filename)) {
             Ok(result) => {
                 info!("Pinned {} → CID: {}", path, result.cid);
-                // Persist to disk cache
+                // Move staging file to disk cache
                 self.disk_cache.put(&result.cid, &content);
+                self.staging.remove(ino);
                 let conn = self.db.lock().unwrap();
                 let _ = index::update_file_cid(
                     &conn,
@@ -237,7 +234,7 @@ impl ShelDriveFS {
             }
             Err(e) => {
                 error!("Failed to pin {} to Shelby: {}", path, e);
-                // Still save to disk cache with a local CID so content isn't lost
+                // Keep staging file — save a local CID reference
                 let local_cid = format!("local:{:x}", fnv_hash(path.as_bytes()));
                 self.disk_cache.put(&local_cid, &content);
                 let conn = self.db.lock().unwrap();
@@ -248,38 +245,39 @@ impl ShelDriveFS {
                     content.len() as i64,
                     &Self::now_iso(),
                 );
-                // Mark dirty again so it retries on next flush
                 self.dirty_inodes.lock().unwrap().insert(ino);
             }
         }
     }
 
-    /// Retrieve file content — checks memory cache, disk cache, then Shelby network.
+    /// Retrieve file content — checks staging, disk cache, then Shelby network.
     fn fetch_content(&self, ino: u64, path: &str, cid: &str) -> Option<Vec<u8>> {
+        // 1. Staging area (file being written)
+        if let Some(data) = self.staging.read_all(ino) {
+            return Some(data);
+        }
+
         if cid == "pending" {
             return None;
         }
 
-        // 1. Disk cache
+        // 2. Disk cache
         if let Some(data) = self.disk_cache.get(cid) {
             debug!("Disk cache hit for {} (CID: {})", path, cid);
-            self.file_content.lock().unwrap().insert(ino, data.clone());
             return Some(data);
         }
 
-        // 2. Local-only CIDs can't be fetched from network
+        // 3. Local-only CIDs can't be fetched from network
         if cid.starts_with("stub:") || cid.starts_with("local:") {
             return None;
         }
 
-        // 3. Shelby network
+        // 4. Shelby network
         info!("Retrieving {} (CID: {}) from Shelby...", path, cid);
         match self.bridge.retrieve(cid) {
             Ok(result) => {
                 let data = BASE64.decode(&result.content).unwrap_or_default();
                 info!("Retrieved {} ({} bytes)", path, data.len());
-                // Cache in memory and on disk
-                self.file_content.lock().unwrap().insert(ino, data.clone());
                 self.disk_cache.put(cid, &data);
                 Some(data)
             }
@@ -443,22 +441,13 @@ impl Filesystem for ShelDriveFS {
     ) {
         let ino_raw = u64::from(ino);
 
-        // 1. Check in-memory cache
-        {
-            let content = self.file_content.lock().unwrap();
-            if let Some(data) = content.get(&ino_raw) {
-                let start = offset as usize;
-                if start >= data.len() {
-                    reply.data(&[]);
-                } else {
-                    let end = (start + size as usize).min(data.len());
-                    reply.data(&data[start..end]);
-                }
-                return;
-            }
+        // 1. Check staging area (active writes)
+        if let Some(data) = self.staging.read(ino_raw, offset, size) {
+            reply.data(&data);
+            return;
         }
 
-        // 2. Lookup CID from SQLite and retrieve from Shelby
+        // 2. Lookup CID from SQLite and retrieve from disk cache / Shelby
         let path = self.file_ino_map.lock().unwrap().get(&ino_raw).cloned();
         if let Some(path) = path {
             let cid = {
@@ -520,31 +509,25 @@ impl Filesystem for ShelDriveFS {
             }
         };
 
-        // Buffer writes in memory
-        let mut content = self.file_content.lock().unwrap();
-        let buf = content.entry(ino_raw).or_insert_with(Vec::new);
-        let start = offset as usize;
+        // Write to disk-backed staging file (handles any file size)
+        match self.staging.write(ino_raw, offset, data) {
+            Ok(_) => {
+                let new_size = self.staging.size(ino_raw).unwrap_or(0) as i64;
 
-        if start > buf.len() {
-            buf.resize(start, 0);
+                // Mark dirty — will be synced to Shelby on release/flush
+                self.dirty_inodes.lock().unwrap().insert(ino_raw);
+
+                // Update size in SQLite (CID stays as "pending" until flush)
+                let conn = self.db.lock().unwrap();
+                let _ = index::update_file_cid(&conn, &path, "pending", new_size, &Self::now_iso());
+
+                reply.written(data.len() as u32);
+            }
+            Err(e) => {
+                error!("Staging write failed for {}: {}", path, e);
+                reply.error(Errno::EIO);
+            }
         }
-        let end = start + data.len();
-        if end > buf.len() {
-            buf.resize(end, 0);
-        }
-        buf[start..end].copy_from_slice(data);
-
-        let new_size = buf.len() as i64;
-        drop(content);
-
-        // Mark dirty — will be synced to Shelby on release/flush
-        self.dirty_inodes.lock().unwrap().insert(ino_raw);
-
-        // Update size in SQLite (CID stays as "pending" until flush)
-        let conn = self.db.lock().unwrap();
-        let _ = index::update_file_cid(&conn, &path, "pending", new_size, &Self::now_iso());
-
-        reply.written(data.len() as u32);
     }
 
     fn flush(
@@ -752,7 +735,7 @@ impl Filesystem for ShelDriveFS {
             Ok(1) => {
                 if let Some(ino) = self.path_ino_map.lock().unwrap().remove(&child_path) {
                     self.file_ino_map.lock().unwrap().remove(&ino);
-                    self.file_content.lock().unwrap().remove(&ino);
+                    self.staging.remove(ino);
                     self.dirty_inodes.lock().unwrap().remove(&ino);
                 }
                 reply.ok();
@@ -827,11 +810,8 @@ impl Filesystem for ShelDriveFS {
 
         if let Some(new_size) = size {
             if let Some(path) = self.file_ino_map.lock().unwrap().get(&ino_raw).cloned() {
-                let mut content = self.file_content.lock().unwrap();
-                let buf = content.entry(ino_raw).or_insert_with(Vec::new);
-                buf.resize(new_size as usize, 0);
-                let sz = buf.len() as i64;
-                drop(content);
+                let _ = self.staging.truncate(ino_raw, new_size);
+                let sz = new_size as i64;
 
                 if new_size > 0 {
                     self.dirty_inodes.lock().unwrap().insert(ino_raw);
