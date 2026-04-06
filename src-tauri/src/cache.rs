@@ -195,6 +195,17 @@ impl StagingArea {
         let _ = fs::remove_file(self.ino_path(ino));
     }
 
+    /// Total bytes used by all staging files.
+    pub fn used_bytes(&self) -> Option<u64> {
+        let mut total = 0u64;
+        for entry in fs::read_dir(&self.dir).ok()?.flatten() {
+            if let Ok(meta) = entry.metadata() {
+                total += meta.len();
+            }
+        }
+        Some(total)
+    }
+
     fn ino_path(&self, ino: u64) -> PathBuf {
         self.dir.join(format!("{:x}", ino))
     }

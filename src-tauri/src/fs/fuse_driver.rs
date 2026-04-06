@@ -9,7 +9,8 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use fuser::{
     BackgroundSession, BsdFileFlags, Config, Errno, FileAttr, FileHandle, FileType, Filesystem,
     FopenFlags, Generation, INodeNo, LockOwner, MountOption, OpenFlags, ReplyAttr, ReplyCreate,
-    ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen, ReplyWrite, Request, Session,
+    ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen, ReplyStatfs, ReplyWrite,
+    Request, Session,
     TimeOrNow, WriteFlags,
 };
 use log::{debug, error, info, warn};
@@ -290,6 +291,15 @@ impl ShelDriveFS {
 }
 
 impl Filesystem for ShelDriveFS {
+    fn statfs(&self, _req: &Request, _ino: INodeNo, reply: ReplyStatfs) {
+        // Report 1TB virtual capacity so the OS never blocks writes
+        let block_size = 4096u32;
+        let total_blocks = 1_099_511_627_776u64 / block_size as u64; // 1TB
+        let used = self.staging.used_bytes().unwrap_or(0) / block_size as u64;
+        let free = total_blocks.saturating_sub(used);
+        reply.statfs(total_blocks, free, free, 1_000_000, 1_000_000, block_size, 255, 0);
+    }
+
     fn lookup(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
         let parent_raw = u64::from(parent);
         debug!("lookup: parent={}, name={:?}", parent_raw, name);
