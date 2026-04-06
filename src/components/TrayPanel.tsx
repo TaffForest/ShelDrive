@@ -89,32 +89,47 @@ export function TrayPanel() {
         {/* Drive card */}
         <div
           style={{
-            padding: "20px 18px",
+            padding: "14px 18px",
             background: "var(--bg-card)",
             border: "1px solid var(--border)",
             borderRadius: 12,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>
+              {status.mount_status === "mounted"
+                ? "Shelby storage mounted"
+                : "Drive not mounted"}
+            </div>
+            <div
+              className="mono"
+              style={{
+                fontSize: 11,
+                color: "var(--text-muted)",
+                marginTop: 3,
+              }}
+            >
+              ~/ShelDrive
+            </div>
+          </div>
           <div
-            className="mono"
             style={{
-              fontSize: 20,
-              fontWeight: 700,
-              color:
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              backgroundColor:
                 status.mount_status === "mounted"
                   ? "var(--accent)"
                   : "var(--text-dim)",
-              letterSpacing: "-0.3px",
-              marginBottom: 6,
+              boxShadow:
+                status.mount_status === "mounted"
+                  ? "0 0 8px var(--accent-glow)"
+                  : "none",
             }}
-          >
-            {status.mount_point}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            {status.mount_status === "mounted"
-              ? "Shelby network storage mounted"
-              : "Click Mount to connect"}
-          </div>
+          />
         </div>
 
         {/* Controls */}

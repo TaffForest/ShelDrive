@@ -3,6 +3,7 @@ mod cache;
 mod commands;
 pub mod db;
 mod fs;
+mod safety;
 mod state;
 
 use bridge::shelby::ShelbyBridge;

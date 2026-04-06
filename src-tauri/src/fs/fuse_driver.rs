@@ -1,5 +1,6 @@
 use crate::bridge::shelby::ShelbyBridge;
 use crate::cache::{DiskCache, StagingArea};
+use crate::safety;
 use crate::db::index::{
     self, delete_directory, delete_file_by_path, get_directory, get_file_by_path, insert_directory,
     insert_file, list_directory, DirItem, FileEntry,
@@ -212,6 +213,17 @@ impl ShelDriveFS {
             Some(c) if !c.is_empty() => c,
             _ => return,
         };
+
+        // Safety: scan images for NSFW content before pinning
+        let verdict = safety::scan_image(&path, &content);
+        if verdict.is_blocked() {
+            warn!("Content blocked: {} — {}", path, verdict.reason());
+            self.staging.remove(ino);
+            let conn = self.db.lock().unwrap();
+            let blocked_cid = format!("blocked:{}", verdict.reason());
+            let _ = index::update_file_cid(&conn, &path, &blocked_cid, 0, &Self::now_iso());
+            return;
+        }
 
         let content_b64 = BASE64.encode(&content);
         let filename = path.rsplit('/').next().unwrap_or(&path);
@@ -516,6 +528,13 @@ impl Filesystem for ShelDriveFS {
             }
         };
 
+        // Safety: check size limit before writing
+        let projected_size = offset + data.len() as u64;
+        if safety::check_size(projected_size).is_blocked() {
+            reply.error(Errno::ENOSPC);
+            return;
+        }
+
         // Write to disk-backed staging file (handles any file size)
         match self.staging.write(ino_raw, offset, data) {
             Ok(_) => {
@@ -589,6 +608,13 @@ impl Filesystem for ShelDriveFS {
             }
         };
 
+        // Safety: block dangerous file types
+        if safety::check_extension(&child_path).is_blocked() {
+            warn!("Blocked: {}", child_path);
+            reply.error(Errno::EPERM);
+            return;
+        }
+
         let conn = self.db.lock().unwrap();
         if get_file_by_path(&conn, &child_path).is_ok() {
             reply.error(Errno::EEXIST);
@@ -636,6 +662,13 @@ impl Filesystem for ShelDriveFS {
                 reply.error(Errno::EINVAL);
                 return;
             }
+        };
+
+        // Safety: block dangerous file types
+        if safety::check_extension(&child_path).is_blocked() {
+            warn!("Blocked: {}", child_path);
+            reply.error(Errno::EPERM);
+            return;
         };
 
         let conn = self.db.lock().unwrap();
@@ -891,6 +924,7 @@ pub fn mount(
     let mut config = Config::default();
     config.mount_options = vec![
         MountOption::FSName("ShelDrive".to_string()),
+        MountOption::CUSTOM("volname=ShelDrive".to_string()),
         MountOption::DefaultPermissions,
     ];
 
