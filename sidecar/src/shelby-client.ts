@@ -62,9 +62,17 @@ export async function initialize(config: SidecarConfig): Promise<boolean> {
 
     if (config.apiKey) {
       clientConfig.apiKey = config.apiKey;
-      // Pass API key to all sub-services
+      // Pass API key to all sub-services and as a custom header for the Aptos fullnode
       clientConfig.rpc = { ...(clientConfig.rpc ?? {}), apiKey: config.apiKey };
       clientConfig.indexer = { apiKey: config.apiKey };
+      clientConfig.aptos = {
+        ...(clientConfig.aptos ?? {}),
+        clientConfig: {
+          HEADERS: {
+            Authorization: `Bearer ${config.apiKey}`,
+          },
+        },
+      };
     }
 
     if (config.rpcBaseUrl) {

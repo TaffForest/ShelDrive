@@ -1,6 +1,7 @@
 mod bridge;
 mod cache;
 mod commands;
+pub mod crypto;
 pub mod db;
 mod fs;
 mod safety;
@@ -34,6 +35,34 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .build(app)?;
 
     Ok(())
+}
+
+/// Register ShelDrive as a login item on macOS so it starts automatically.
+fn setup_autolaunch() {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(exe) = std::env::current_exe() {
+            // Use osascript to add login item (works without special entitlements)
+            let app_path = exe
+                .parent()
+                .and_then(|p| p.parent())
+                .and_then(|p| p.parent())
+                .map(|p| p.to_string_lossy().to_string());
+
+            if let Some(path) = app_path {
+                if path.ends_with(".app") {
+                    let script = format!(
+                        "tell application \"System Events\" to make login item at end with properties {{path:\"{}\", hidden:true}}",
+                        path
+                    );
+                    let _ = std::process::Command::new("osascript")
+                        .args(["-e", &script])
+                        .output();
+                    info!("Registered as login item: {}", path);
+                }
+            }
+        }
+    }
 }
 
 fn sidecar_path() -> String {
@@ -93,9 +122,11 @@ pub fn run() {
             commands::get_shelby_status,
             commands::shelby_ping,
             commands::quit_app,
+            commands::save_config,
         ])
         .setup(|app| {
             setup_tray(app)?;
+            setup_autolaunch();
             Ok(())
         })
         .run(tauri::generate_context!())

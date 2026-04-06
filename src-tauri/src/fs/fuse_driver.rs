@@ -1,5 +1,6 @@
 use crate::bridge::shelby::ShelbyBridge;
 use crate::cache::{DiskCache, StagingArea};
+use crate::crypto;
 use crate::safety;
 use crate::db::index::{
     self, delete_directory, delete_file_by_path, get_directory, get_file_by_path, insert_directory,
@@ -35,6 +36,8 @@ pub struct ShelDriveFS {
     bridge: Arc<ShelbyBridge>,
     disk_cache: DiskCache,
     staging: StagingArea,
+    /// Encryption key derived from the user's private key. None = no encryption.
+    encryption_key: Option<String>,
     dir_ino_map: Mutex<HashMap<u64, String>>,
     file_ino_map: Mutex<HashMap<u64, String>>,
     path_ino_map: Mutex<HashMap<String, u64>>,
@@ -46,7 +49,7 @@ pub struct ShelDriveFS {
 }
 
 impl ShelDriveFS {
-    pub fn new(db_path: &str, bridge: Arc<ShelbyBridge>) -> rusqlite::Result<Self> {
+    pub fn new(db_path: &str, bridge: Arc<ShelbyBridge>, encryption_key: Option<String>) -> rusqlite::Result<Self> {
         let conn = Connection::open(db_path)?;
         schema::initialize(&conn)?;
 
@@ -55,6 +58,7 @@ impl ShelDriveFS {
             bridge,
             disk_cache: DiskCache::new(DEFAULT_CACHE_MAX_BYTES),
             staging: StagingArea::new(),
+            encryption_key,
             dir_ino_map: Mutex::new(HashMap::new()),
             file_ino_map: Mutex::new(HashMap::new()),
             path_ino_map: Mutex::new(HashMap::new()),
@@ -225,10 +229,26 @@ impl ShelDriveFS {
             return;
         }
 
-        let content_b64 = BASE64.encode(&content);
+        // Encrypt content before uploading if key is configured
+        let upload_data = if let Some(ref key) = self.encryption_key {
+            match crypto::encrypt(&content, key) {
+                Ok(encrypted) => {
+                    info!("Encrypted {} ({} → {} bytes)", path, content.len(), encrypted.len());
+                    encrypted
+                }
+                Err(e) => {
+                    error!("Encryption failed for {}: {}", path, e);
+                    content.clone()
+                }
+            }
+        } else {
+            content.clone()
+        };
+
+        let content_b64 = BASE64.encode(&upload_data);
         let filename = path.rsplit('/').next().unwrap_or(&path);
 
-        info!("Pinning {} ({} bytes) to Shelby...", path, content.len());
+        info!("Pinning {} ({} bytes) to Shelby...", path, upload_data.len());
 
         match self.bridge.pin(&content_b64, Some(filename)) {
             Ok(result) => {
@@ -289,7 +309,19 @@ impl ShelDriveFS {
         info!("Retrieving {} (CID: {}) from Shelby...", path, cid);
         match self.bridge.retrieve(cid) {
             Ok(result) => {
-                let data = BASE64.decode(&result.content).unwrap_or_default();
+                let raw = BASE64.decode(&result.content).unwrap_or_default();
+                // Decrypt if encryption key is configured
+                let data = if let Some(ref key) = self.encryption_key {
+                    match crypto::decrypt(&raw, key) {
+                        Ok(decrypted) => {
+                            info!("Decrypted {} ({} → {} bytes)", path, raw.len(), decrypted.len());
+                            decrypted
+                        }
+                        Err(_) => raw, // Not encrypted or wrong key — return raw
+                    }
+                } else {
+                    raw
+                };
                 info!("Retrieved {} ({} bytes)", path, data.len());
                 self.disk_cache.put(cid, &data);
                 Some(data)
@@ -905,6 +937,7 @@ pub fn mount(
     mount_point: &str,
     db_path: &str,
     bridge: Arc<ShelbyBridge>,
+    encryption_key: Option<String>,
 ) -> Result<MountHandle, String> {
     let mount_path = PathBuf::from(mount_point);
 
@@ -918,7 +951,7 @@ pub fn mount(
     std::fs::create_dir_all(&mount_path)
         .map_err(|e| format!("Failed to create mount point: {}", e))?;
 
-    let fs = ShelDriveFS::new(db_path, bridge)
+    let fs = ShelDriveFS::new(db_path, bridge, encryption_key)
         .map_err(|e| format!("Failed to initialize filesystem: {}", e))?;
 
     let mut config = Config::default();

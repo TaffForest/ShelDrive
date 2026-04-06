@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 
 interface SettingsProps {
   onClose: () => void;
@@ -7,8 +8,22 @@ interface SettingsProps {
 export function Settings({ onClose }: SettingsProps) {
   const [nodeUrl, setNodeUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [mountPoint, setMountPoint] = useState("/Volumes/ShelDrive");
-  const [cacheSize, setCacheSize] = useState("512");
+  const [privateKey, setPrivateKey] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async () => {
+    try {
+      await invoke("save_config", {
+        rpcUrl: nodeUrl || null,
+        apiKey: apiKey || null,
+        privateKey: privateKey || null,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      console.error("Save failed:", e);
+    }
+  };
 
   return (
     <div
@@ -55,10 +70,10 @@ export function Settings({ onClose }: SettingsProps) {
         }}
       >
         <Field
-          label="Shelby Node URL"
+          label="Shelby RPC URL"
           value={nodeUrl}
           onChange={setNodeUrl}
-          placeholder="https://api.shelbynet.shelby.xyz/shelby"
+          placeholder="https://api.testnet.shelby.xyz/shelby"
         />
         <Field
           label="API Key"
@@ -68,20 +83,16 @@ export function Settings({ onClose }: SettingsProps) {
           type="password"
         />
         <Field
-          label="Mount Point"
-          value={mountPoint}
-          onChange={setMountPoint}
-          placeholder="/Volumes/ShelDrive"
-        />
-        <Field
-          label="Cache Size (MB)"
-          value={cacheSize}
-          onChange={setCacheSize}
-          placeholder="512"
+          label="Private Key"
+          value={privateKey}
+          onChange={setPrivateKey}
+          placeholder="0x..."
+          type="password"
         />
 
         <div style={{ marginTop: 4 }}>
           <button
+            onClick={handleSave}
             style={{
               width: "100%",
               padding: "11px 0",
@@ -90,11 +101,11 @@ export function Settings({ onClose }: SettingsProps) {
               borderRadius: 6,
               border: "none",
               color: "#050505",
-              background: "var(--accent)",
+              background: saved ? "var(--accent-dark, #6BA030)" : "var(--accent)",
               transition: "all 0.15s",
             }}
           >
-            Save
+            {saved ? "Saved" : "Save"}
           </button>
           <div
             style={{
@@ -104,7 +115,7 @@ export function Settings({ onClose }: SettingsProps) {
               textAlign: "center",
             }}
           >
-            Saves to ~/.sheldrive/config.toml
+            Saves to ~/.sheldrive/config.toml — restart app to apply
           </div>
         </div>
       </div>
