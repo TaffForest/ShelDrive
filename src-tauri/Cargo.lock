@@ -3477,6 +3477,7 @@ dependencies = [
  "env_logger",
  "filetime",
  "fuser",
+ "hex",
  "libc",
  "log",
  "rand 0.8.5",

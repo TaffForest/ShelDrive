@@ -123,6 +123,8 @@ pub fn run() {
             commands::shelby_ping,
             commands::quit_app,
             commands::save_config,
+            commands::share_folder,
+            commands::get_shared_folders,
         ])
         .setup(|app| {
             setup_tray(app)?;

@@ -207,6 +207,68 @@ fn extract_value(content: &str, key: &str) -> Option<String> {
 }
 
 #[tauri::command]
+pub fn share_folder(
+    db: State<'_, Database>,
+    folder_path: String,
+    recipient_address: String,
+) -> Result<String, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    // Get the folder's encryption key
+    let fk = index::get_folder_key(&conn, &folder_path)
+        .map_err(|_| format!("No encryption key found for folder: {}", folder_path))?;
+
+    // Load our private key to unwrap then re-wrap for recipient
+    let config = crate::bridge::shelby::ShelbyConfig::load();
+    let private_key = config.private_key
+        .ok_or("No private key configured — cannot share")?;
+
+    // Unwrap the folder key with our private key
+    let folder_key = crate::crypto::unwrap_folder_key(&fk.encrypted_key, &private_key)
+        .map_err(|e| format!("Failed to unwrap folder key: {}", e))?;
+
+    // Wrap the folder key for the recipient
+    let recipient_wrapped = crate::crypto::wrap_folder_key_for_recipient(
+        &folder_key,
+        &private_key,
+        &recipient_address,
+    )
+    .map_err(|e| format!("Failed to wrap key for recipient: {}", e))?;
+
+    // Store the shared member
+    let member = index::SharedMember {
+        folder_path: folder_path.clone(),
+        member_address: recipient_address.clone(),
+        encrypted_key: recipient_wrapped,
+        added_at: chrono::Utc::now().to_rfc3339(),
+    };
+    index::add_shared_member(&conn, &member).map_err(|e| e.to_string())?;
+
+    info!("Shared {} with {}", folder_path, recipient_address);
+    Ok(format!("Shared {} with {}", folder_path, recipient_address))
+}
+
+#[tauri::command]
+pub fn get_shared_folders(db: State<'_, Database>) -> Result<Vec<index::SharedMember>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    // Get all shared members across all folders
+    let mut stmt = conn
+        .prepare("SELECT folder_path, member_address, encrypted_key, added_at FROM shared_members")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(index::SharedMember {
+                folder_path: row.get(0)?,
+                member_address: row.get(1)?,
+                encrypted_key: row.get(2)?,
+                added_at: row.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }

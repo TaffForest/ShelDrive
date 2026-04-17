@@ -188,6 +188,108 @@ fn row_to_file_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<FileEntry> {
 }
 
 // ---------------------------------------------------------------------------
+// Folder key operations
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FolderKey {
+    pub folder_path: String,
+    pub encrypted_key: String,
+    pub owner_address: String,
+    pub created_at: String,
+    pub rotated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SharedMember {
+    pub folder_path: String,
+    pub member_address: String,
+    pub encrypted_key: String,
+    pub added_at: String,
+}
+
+pub fn insert_folder_key(conn: &Connection, fk: &FolderKey) -> rusqlite::Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO folder_keys (folder_path, encrypted_key, owner_address, created_at, rotated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![fk.folder_path, fk.encrypted_key, fk.owner_address, fk.created_at, fk.rotated_at],
+    )?;
+    Ok(())
+}
+
+pub fn get_folder_key(conn: &Connection, folder_path: &str) -> rusqlite::Result<FolderKey> {
+    conn.query_row(
+        "SELECT folder_path, encrypted_key, owner_address, created_at, rotated_at
+         FROM folder_keys WHERE folder_path = ?1",
+        params![folder_path],
+        |row| {
+            Ok(FolderKey {
+                folder_path: row.get(0)?,
+                encrypted_key: row.get(1)?,
+                owner_address: row.get(2)?,
+                created_at: row.get(3)?,
+                rotated_at: row.get(4)?,
+            })
+        },
+    )
+}
+
+/// Find the folder key for a file path by walking up the directory tree.
+pub fn get_folder_key_for_path(conn: &Connection, file_path: &str) -> Option<FolderKey> {
+    let mut path = file_path.to_string();
+    loop {
+        if let Ok(fk) = get_folder_key(conn, &path) {
+            return Some(fk);
+        }
+        // Walk up to parent
+        match path.rsplit_once('/') {
+            Some(("", _)) => {
+                // Try root
+                return get_folder_key(conn, "/").ok();
+            }
+            Some((parent, _)) => path = parent.to_string(),
+            None => return get_folder_key(conn, "/").ok(),
+        }
+    }
+}
+
+pub fn add_shared_member(conn: &Connection, member: &SharedMember) -> rusqlite::Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO shared_members (folder_path, member_address, encrypted_key, added_at)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![member.folder_path, member.member_address, member.encrypted_key, member.added_at],
+    )?;
+    Ok(())
+}
+
+pub fn get_shared_members(conn: &Connection, folder_path: &str) -> rusqlite::Result<Vec<SharedMember>> {
+    let mut stmt = conn.prepare(
+        "SELECT folder_path, member_address, encrypted_key, added_at
+         FROM shared_members WHERE folder_path = ?1",
+    )?;
+    let rows = stmt.query_map(params![folder_path], |row| {
+        Ok(SharedMember {
+            folder_path: row.get(0)?,
+            member_address: row.get(1)?,
+            encrypted_key: row.get(2)?,
+            added_at: row.get(3)?,
+        })
+    })?;
+    rows.collect()
+}
+
+pub fn remove_shared_member(
+    conn: &Connection,
+    folder_path: &str,
+    member_address: &str,
+) -> rusqlite::Result<usize> {
+    conn.execute(
+        "DELETE FROM shared_members WHERE folder_path = ?1 AND member_address = ?2",
+        params![folder_path, member_address],
+    )
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 

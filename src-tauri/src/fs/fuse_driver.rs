@@ -2,6 +2,7 @@ use crate::bridge::shelby::ShelbyBridge;
 use crate::cache::{DiskCache, StagingArea};
 use crate::crypto;
 use crate::safety;
+use sha2::Digest as Sha2Digest;
 use crate::db::index::{
     self, delete_directory, delete_file_by_path, get_directory, get_file_by_path, insert_directory,
     insert_file, list_directory, DirItem, FileEntry,
@@ -229,20 +230,45 @@ impl ShelDriveFS {
             return;
         }
 
-        // Encrypt content before uploading if key is configured
-        let upload_data = if let Some(ref key) = self.encryption_key {
-            match crypto::encrypt(&content, key) {
-                Ok(encrypted) => {
-                    info!("Encrypted {} ({} → {} bytes)", path, content.len(), encrypted.len());
-                    encrypted
-                }
-                Err(e) => {
-                    error!("Encryption failed for {}: {}", path, e);
+        // Encrypt content using per-folder key if available, else fallback to private key
+        let upload_data = {
+            let conn = self.db.lock().unwrap();
+            let folder_key_result = index::get_folder_key_for_path(&conn, &path);
+            drop(conn);
+
+            if let Some(fk) = folder_key_result {
+                if let Some(ref pk) = self.encryption_key {
+                    match crypto::unwrap_folder_key(&fk.encrypted_key, pk) {
+                        Ok(folder_key) => match crypto::encrypt_with_key(&content, &folder_key) {
+                            Ok(encrypted) => {
+                                info!("Encrypted {} with folder key ({} → {} bytes)", path, content.len(), encrypted.len());
+                                encrypted
+                            }
+                            Err(e) => {
+                                error!("Folder key encryption failed: {}", e);
+                                content.clone()
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to unwrap folder key: {}", e);
+                            content.clone()
+                        }
+                    }
+                } else {
                     content.clone()
                 }
+            } else if let Some(ref key) = self.encryption_key {
+                // Fallback: encrypt with private key directly
+                match crypto::encrypt(&content, key) {
+                    Ok(encrypted) => encrypted,
+                    Err(e) => {
+                        error!("Encryption failed: {}", e);
+                        content.clone()
+                    }
+                }
+            } else {
+                content.clone()
             }
-        } else {
-            content.clone()
         };
 
         let content_b64 = BASE64.encode(&upload_data);
@@ -310,14 +336,19 @@ impl ShelDriveFS {
         match self.bridge.retrieve(cid) {
             Ok(result) => {
                 let raw = BASE64.decode(&result.content).unwrap_or_default();
-                // Decrypt if encryption key is configured
-                let data = if let Some(ref key) = self.encryption_key {
-                    match crypto::decrypt(&raw, key) {
-                        Ok(decrypted) => {
-                            info!("Decrypted {} ({} → {} bytes)", path, raw.len(), decrypted.len());
-                            decrypted
+                // Decrypt using per-folder key or fallback to private key
+                let data = if let Some(ref pk) = self.encryption_key {
+                    let conn = self.db.lock().unwrap();
+                    let folder_key_result = index::get_folder_key_for_path(&conn, path);
+                    drop(conn);
+
+                    if let Some(fk) = folder_key_result {
+                        match crypto::unwrap_folder_key(&fk.encrypted_key, pk) {
+                            Ok(folder_key) => crypto::decrypt_with_key(&raw, &folder_key).unwrap_or(raw.clone()),
+                            Err(_) => crypto::decrypt(&raw, pk).unwrap_or(raw.clone()),
                         }
-                        Err(_) => raw, // Not encrypted or wrong key — return raw
+                    } else {
+                        crypto::decrypt(&raw, pk).unwrap_or(raw.clone())
                     }
                 } else {
                     raw
@@ -765,6 +796,22 @@ impl Filesystem for ShelDriveFS {
 
         match insert_directory(&conn, &child_path, &Self::now_iso()) {
             Ok(_) => {
+                // Generate per-folder encryption key
+                if let Some(ref pk) = self.encryption_key {
+                    let folder_key = crypto::generate_folder_key();
+                    if let Ok(wrapped) = crypto::wrap_folder_key(&folder_key, pk) {
+                        let owner_addr = hex::encode(&sha2::Sha256::digest(pk.as_bytes())[..20]);
+                        let fk = index::FolderKey {
+                            folder_path: child_path.clone(),
+                            encrypted_key: wrapped,
+                            owner_address: owner_addr,
+                            created_at: Self::now_iso(),
+                            rotated_at: None,
+                        };
+                        let _ = index::insert_folder_key(&conn, &fk);
+                        debug!("Generated folder key for {}", child_path);
+                    }
+                }
                 let ino = self.alloc_dir_ino(&child_path);
                 reply.entry(&TTL, &self.make_dir_attr(ino), Generation(0));
             }
