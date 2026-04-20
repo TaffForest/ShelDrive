@@ -65,8 +65,10 @@ jobs:
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
-          choco install winfsp -y --no-progress
-          # Set WINFSP_LIB_PATH so the winfsp crate can find the SDK
+          # Download WinFSP MSI directly (choco feed sometimes flakes)
+          $msi = "$env:TEMP\winfsp.msi"
+          Invoke-WebRequest -Uri "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi" -OutFile $msi
+          Start-Process msiexec.exe -Wait -ArgumentList "/i $msi /quiet /norestart"
           "WINFSP_LIB_PATH=C:\Program Files (x86)\WinFsp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Install frontend dependencies
