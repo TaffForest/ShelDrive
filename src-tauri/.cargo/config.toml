@@ -1,6 +1,13 @@
-[env]
-PKG_CONFIG_PATH = { value = "/usr/local/lib/pkgconfig", force = true }
-PKG_CONFIG = { value = "/opt/homebrew/bin/pkg-config", force = true }
-
+# macOS FUSE-T linker rpath — needed so the app can find libfuse3.dylib at runtime.
 [target.aarch64-apple-darwin]
 rustflags = ["-C", "link-arg=-Wl,-rpath,/usr/local/lib"]
+
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "link-arg=-Wl,-rpath,/usr/local/lib"]
+
+# Target-specific pkg-config paths. The pkg-config crate reads these
+# prefixed env vars, so we can point macOS builds at FUSE-T's /usr/local
+# without affecting Linux or Windows cross-compilation.
+[env]
+PKG_CONFIG_PATH_aarch64-apple-darwin = { value = "/usr/local/lib/pkgconfig", force = false }
+PKG_CONFIG_PATH_x86_64-apple-darwin = { value = "/usr/local/lib/pkgconfig", force = false }
