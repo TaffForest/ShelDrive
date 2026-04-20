@@ -31,9 +31,10 @@ use windows::Win32::Foundation::{
     STATUS_FILE_IS_A_DIRECTORY, STATUS_NOT_A_DIRECTORY, STATUS_OBJECT_NAME_COLLISION,
     STATUS_OBJECT_NAME_NOT_FOUND,
 };
-use windows::Win32::Storage::FileSystem::{
-    FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_DIRECTORY_FILE,
-};
+use windows::Win32::Storage::FileSystem::{FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL};
+
+/// FILE_DIRECTORY_FILE flag from NtCreateFile API (Windows DDK)
+const FILE_DIRECTORY_FILE: u32 = 0x00000001;
 
 const DEFAULT_CACHE_MAX_BYTES: u64 = 512 * 1024 * 1024;
 const SECTOR_SIZE: u16 = 512;
@@ -373,7 +374,7 @@ impl FileSystemContext for ShelDriveFS {
         file_info: &mut OpenFileInfo,
     ) -> FspResult<Self::FileContext> {
         let path = Self::to_internal_path(&Self::u16_to_string(file_name));
-        let is_dir = (create_options & FILE_DIRECTORY_FILE.0) != 0;
+        let is_dir = (create_options & FILE_DIRECTORY_FILE) != 0;
         debug!("create: {} (dir={})", path, is_dir);
 
         // Safety: block dangerous file types
