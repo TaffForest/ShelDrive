@@ -24,12 +24,15 @@ use winfsp::filesystem::{
     DirInfo, DirMarker, FileInfo, FileSecurity, FileSystemContext, ModificationDescriptor,
     OpenFileInfo, VolumeInfo, WideNameInfo,
 };
-use winfsp::host::{FileSystemHost, FileSystemParams, VolumeParams};
+use winfsp::host::{FileSystemHost, VolumeParams};
 use winfsp::{FspError, Result as FspResult, U16CStr};
-use winfsp_sys::{
-    FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, STATUS_ACCESS_DENIED,
-    STATUS_DIRECTORY_NOT_EMPTY, STATUS_END_OF_FILE, STATUS_FILE_IS_A_DIRECTORY, STATUS_NOT_A_DIRECTORY,
-    STATUS_OBJECT_NAME_COLLISION, STATUS_OBJECT_NAME_NOT_FOUND,
+use windows::Win32::Foundation::{
+    STATUS_ACCESS_DENIED, STATUS_DIRECTORY_NOT_EMPTY, STATUS_END_OF_FILE,
+    STATUS_FILE_IS_A_DIRECTORY, STATUS_NOT_A_DIRECTORY, STATUS_OBJECT_NAME_COLLISION,
+    STATUS_OBJECT_NAME_NOT_FOUND,
+};
+use windows::Win32::Storage::FileSystem::{
+    FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_DIRECTORY_FILE,
 };
 
 const DEFAULT_CACHE_MAX_BYTES: u64 = 512 * 1024 * 1024;
@@ -117,7 +120,7 @@ impl ShelDriveFS {
     }
 
     fn fill_file_info_for_directory(info: &mut FileInfo) {
-        info.file_attributes = FILE_ATTRIBUTE_DIRECTORY;
+        info.file_attributes = FILE_ATTRIBUTE_DIRECTORY.0;
         info.file_size = 0;
         info.allocation_size = 0;
         let now = Self::windows_time_now();
@@ -128,7 +131,7 @@ impl ShelDriveFS {
     }
 
     fn fill_file_info_for_file(info: &mut FileInfo, entry: &FileEntry) {
-        info.file_attributes = FILE_ATTRIBUTE_NORMAL;
+        info.file_attributes = FILE_ATTRIBUTE_NORMAL.0;
         info.file_size = entry.size_bytes as u64;
         info.allocation_size = ((entry.size_bytes as u64 + SECTOR_SIZE as u64 - 1)
             / SECTOR_SIZE as u64)
@@ -295,9 +298,9 @@ impl FileSystemContext for ShelDriveFS {
             reparse: false,
             sz_security_descriptor: 0,
             attributes: if is_directory {
-                FILE_ATTRIBUTE_DIRECTORY
+                FILE_ATTRIBUTE_DIRECTORY.0
             } else {
-                FILE_ATTRIBUTE_NORMAL
+                FILE_ATTRIBUTE_NORMAL.0
             },
         })
     }
@@ -370,7 +373,7 @@ impl FileSystemContext for ShelDriveFS {
         file_info: &mut OpenFileInfo,
     ) -> FspResult<Self::FileContext> {
         let path = Self::to_internal_path(&Self::u16_to_string(file_name));
-        let is_dir = (create_options & winfsp_sys::FILE_DIRECTORY_FILE) != 0;
+        let is_dir = (create_options & FILE_DIRECTORY_FILE.0) != 0;
         debug!("create: {} (dir={})", path, is_dir);
 
         // Safety: block dangerous file types
@@ -623,13 +626,13 @@ impl FileSystemContext for ShelDriveFS {
             let mut dir_info: DirInfo<255> = DirInfo::new();
             *dir_info.file_info_mut() = file_info;
             let name_wide: Vec<u16> = name.encode_utf16().collect();
-            dir_info.set_name_raw(&name_wide);
+            let _ = dir_info.set_name_raw(name_wide.as_slice());
             if !dir_info.append_to_buffer(buffer, &mut cursor) {
                 break;
             }
         }
         // Signal end of directory
-        let _ = DirInfo::<255>::finalize(buffer, &mut cursor);
+        DirInfo::<255>::finalize_buffer(buffer, &mut cursor);
         Ok(cursor)
     }
 
@@ -802,7 +805,7 @@ impl ShelDriveFS {
 // ---------------------------------------------------------------------------
 
 pub struct MountHandle {
-    _fs: FileSystemHost<'static, ShelDriveFS>,
+    _fs: FileSystemHost<ShelDriveFS>,
     _init: winfsp::FspInit,
 }
 
@@ -844,12 +847,8 @@ pub fn mount(
 
     info!("WinFSP mounted at {}", mount_point);
 
-    // SAFETY: extend lifetime — FileSystemHost<'a, T> has 'a tied to &T typically;
-    // we own `fs` via MountHandle for the app's lifetime.
-    let host_static: FileSystemHost<'static, ShelDriveFS> = unsafe { std::mem::transmute(host) };
-
     Ok(MountHandle {
-        _fs: host_static,
+        _fs: host,
         _init: init,
     })
 }
