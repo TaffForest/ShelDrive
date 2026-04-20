@@ -1,4 +1,4 @@
-use crate::fs::fuse_driver::MountHandle;
+use crate::fs::driver::MountHandle;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 

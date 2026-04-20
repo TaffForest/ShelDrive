@@ -1,7 +1,7 @@
 use crate::bridge::shelby::{ShelbyBridge, ShelbyStatus};
 use crate::db::index;
 use crate::db::Database;
-use crate::fs::fuse_driver;
+use crate::fs::driver as fuse_driver;
 use crate::state::{AppState, AppStatus, MountStatus};
 use log::{error, info};
 use std::sync::Arc;
@@ -277,19 +277,14 @@ fn install_fuse_t() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         let tmp_pkg = "/tmp/fuse-t.pkg";
-
-        // Download FUSE-T installer
         info!("Downloading FUSE-T...");
         let dl = std::process::Command::new("curl")
             .args(["-fsSL", "-o", tmp_pkg, "https://github.com/macos-fuse-t/fuse-t/releases/download/1.2.0/fuse-t-macos-installer-1.2.0.pkg"])
             .output()
             .map_err(|e| format!("Download failed: {}", e))?;
-
         if !dl.status.success() {
             return Err(format!("Download failed: {}", String::from_utf8_lossy(&dl.stderr)));
         }
-
-        // Install with osascript to get admin privileges via GUI prompt
         info!("Installing FUSE-T (will prompt for password)...");
         let install = std::process::Command::new("osascript")
             .args([
@@ -301,9 +296,7 @@ fn install_fuse_t() -> Result<(), String> {
             ])
             .output()
             .map_err(|e| format!("Install failed: {}", e))?;
-
         let _ = std::fs::remove_file(tmp_pkg);
-
         if install.status.success() {
             Ok(())
         } else {
@@ -311,9 +304,42 @@ fn install_fuse_t() -> Result<(), String> {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
     {
-        Err("Auto-install only supported on macOS".to_string())
+        // Download WinFSP installer MSI and launch it with admin privileges
+        let tmp_msi = std::env::temp_dir().join("winfsp-installer.msi");
+        let tmp_str = tmp_msi.to_string_lossy().to_string();
+        info!("Downloading WinFSP...");
+        // WinFSP 2.0 installer from GitHub releases
+        let dl = std::process::Command::new("powershell")
+            .args([
+                "-Command",
+                &format!(
+                    "Invoke-WebRequest -Uri 'https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi' -OutFile '{}'",
+                    tmp_str
+                ),
+            ])
+            .output()
+            .map_err(|e| format!("Download failed: {}", e))?;
+        if !dl.status.success() {
+            return Err(format!("Download failed: {}", String::from_utf8_lossy(&dl.stderr)));
+        }
+        info!("Installing WinFSP (will prompt for admin)...");
+        let install = std::process::Command::new("msiexec")
+            .args(["/i", &tmp_str, "/quiet", "/norestart"])
+            .output()
+            .map_err(|e| format!("Install failed: {}", e))?;
+        let _ = std::fs::remove_file(&tmp_msi);
+        if install.status.success() {
+            Ok(())
+        } else {
+            Err(String::from_utf8_lossy(&install.stderr).to_string())
+        }
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        Err("Auto-install only supported on macOS and Windows".to_string())
     }
 }
 
@@ -337,7 +363,9 @@ fn is_fuse_installed() -> bool {
     }
     #[cfg(target_os = "windows")]
     {
-        true // WinFSP check TBD
+        // WinFSP installs to Program Files (x86) by default
+        std::path::Path::new("C:\\Program Files (x86)\\WinFsp\\bin\\winfsp-x64.dll").exists()
+            || std::path::Path::new("C:\\Program Files\\WinFsp\\bin\\winfsp-x64.dll").exists()
     }
 }
 
